@@ -10,9 +10,12 @@ type VersionEndpoint struct {
 	data       ReleaseVersion
 }
 
+func (e VersionEndpoint) GetOutputPath() string { return e.outputPath }
+func (e VersionEndpoint) GetData() interface{}  { return e.data }
+
 type ReleaseVersion struct {
 	ReleaseSHA256 string `json:"release_sha256" yaml:"release_sha256"`
-	LastUpdated   string `json:"last_updated" yaml:"last_updated"`
+	LastUpdated   int64  `json:"last_updated" yaml:"last_updated"`
 }
 
 func NewVersionEndpoint(basePath string, version ReleaseVersion) VersionEndpoint {

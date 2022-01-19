@@ -10,12 +10,15 @@ import (
 // GET /api/:generated_sha/v1/integrations/:namespace/:name/:version.json
 type IntegrationVersionEndpoint struct {
 	outputPath string
-	data       catalogv1.Integration
+	data       IntegrationVersion
 }
 
+func (e IntegrationVersionEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionEndpoint) GetData() interface{}  { return e.data }
+
 type IntegrationVersion struct {
-	Integration catalogv1.Integration `json:"integration" yaml:"integration"`
-	Version     string                `json:"version" yaml:"version"`
+	catalogv1.Integration
+	Version string `json:"version" yaml:"version"`
 }
 
 func NewIntegrationVersionEndpoint(basePath string, iv IntegrationVersion) IntegrationVersionEndpoint {
@@ -28,7 +31,7 @@ func NewIntegrationVersionEndpoint(basePath string, iv IntegrationVersion) Integ
 
 	return IntegrationVersionEndpoint{
 		outputPath: outputPath,
-		data:       iv.Integration,
+		data:       iv,
 	}
 }
 

@@ -38,11 +38,12 @@ func wrapperFromRawWrapper(raw rawWrapper) (wrapper, error) {
 	wrap := wrapper{
 		Type:       raw.Type,
 		APIVersion: raw.APIVersion,
+		Metadata:   raw.Metadata,
 	}
 	switch wrap.TypeVersion() {
 	case "catalog/v1.Integration":
 		integration := catalogv1.Integration{
-			Metadata: wrap.Metadata,
+			Metadata: raw.Metadata,
 		}
 		if err := raw.Value.Decode(&integration); err != nil {
 			return wrap, fmt.Errorf("failed to decode raw value %s: %w", wrap.TypeVersion(), err)
@@ -54,6 +55,5 @@ func wrapperFromRawWrapper(raw rawWrapper) (wrapper, error) {
 		return wrap, nil
 	default:
 		return wrap, fmt.Errorf("invalid resource type version: %s", wrap.TypeVersion())
-		return wrap, nil
 	}
 }
