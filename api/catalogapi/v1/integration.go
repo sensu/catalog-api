@@ -7,6 +7,102 @@ import (
 	catalogv1 "github.com/sensu/catalog-api/api/catalog/v1"
 )
 
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/resources.json
+type IntegrationVersionResourcesEndpoint struct {
+	outputPath string
+	data       string
+}
+
+func (e IntegrationVersionResourcesEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionResourcesEndpoint) GetData() interface{}  { return e.data }
+
+func NewIntegrationVersionResourcesEndpoint(basePath string, iv IntegrationVersion, data string) IntegrationVersionResourcesEndpoint {
+	outputPath := path.Join(
+		basePath,
+		apiVersion,
+		iv.Integration.Metadata.Namespace,
+		iv.Integration.Metadata.Name,
+		iv.Version,
+		"resources.json")
+
+	return IntegrationVersionResourcesEndpoint{
+		outputPath: outputPath,
+		data:       data,
+	}
+}
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/logo.png
+type IntegrationVersionLogoEndpoint struct {
+	outputPath string
+	data       string
+}
+
+func (e IntegrationVersionLogoEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionLogoEndpoint) GetData() interface{}  { return e.data }
+
+func NewIntegrationVersionLogoEndpoint(basePath string, iv IntegrationVersion, data string) IntegrationVersionLogoEndpoint {
+	outputPath := path.Join(
+		basePath,
+		apiVersion,
+		iv.Integration.Metadata.Namespace,
+		iv.Integration.Metadata.Name,
+		iv.Version,
+		"logo.png")
+
+	return IntegrationVersionLogoEndpoint{
+		outputPath: outputPath,
+		data:       data,
+	}
+}
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/README.md
+type IntegrationVersionReadmeEndpoint struct {
+	outputPath string
+	data       string
+}
+
+func (e IntegrationVersionReadmeEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionReadmeEndpoint) GetData() interface{}  { return e.data }
+
+func NewIntegrationVersionReadmeEndpoint(basePath string, iv IntegrationVersion, data string) IntegrationVersionReadmeEndpoint {
+	outputPath := path.Join(
+		basePath,
+		apiVersion,
+		iv.Integration.Metadata.Namespace,
+		iv.Integration.Metadata.Name,
+		iv.Version,
+		"README.md")
+
+	return IntegrationVersionReadmeEndpoint{
+		outputPath: outputPath,
+		data:       data,
+	}
+}
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/CHANGELOG.md
+type IntegrationVersionChangelogEndpoint struct {
+	outputPath string
+	data       string
+}
+
+func (e IntegrationVersionChangelogEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionChangelogEndpoint) GetData() interface{}  { return e.data }
+
+func NewIntegrationVersionChangelogEndpoint(basePath string, iv IntegrationVersion, data string) IntegrationVersionChangelogEndpoint {
+	outputPath := path.Join(
+		basePath,
+		apiVersion,
+		iv.Integration.Metadata.Namespace,
+		iv.Integration.Metadata.Name,
+		iv.Version,
+		"CHANGELOG.md")
+
+	return IntegrationVersionChangelogEndpoint{
+		outputPath: outputPath,
+		data:       data,
+	}
+}
+
 // GET /api/:generated_sha/v1/integrations/:namespace/:name/:version.json
 type IntegrationVersionEndpoint struct {
 	outputPath string

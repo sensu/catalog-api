@@ -278,19 +278,17 @@ func (m integrationManager) getIntegrationResources(version integrationVersion, 
 	// attempt to unmarshal yaml to verify that the yaml is valid
 	// TODO(jk): iterate through & validate each resource against the supported
 	// versions of Sensu that the integration defines
-	node := yaml.Node{}
-	if err := yaml.Unmarshal([]byte(contents), &node); err != nil {
+	resources := map[string]interface{}{}
+	if err := yaml.Unmarshal([]byte(contents), &resources); err != nil {
 		return "", fmt.Errorf("error unmarshaling integration resources: %w", err)
 	}
 
-	nj, err := json.Marshal(node)
+	resourcesJSON, err := json.Marshal(resources)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Println(string(nj))
-
-	return contents, nil
+	return string(resourcesJSON), nil
 }
 
 func (m integrationManager) getIntegrationLogo(version integrationVersion, integrationPath string) (string, error) {
@@ -301,6 +299,18 @@ func (m integrationManager) getIntegrationLogo(version integrationVersion, integ
 	}
 
 	// TODO(jk): add basic validation using https://pkg.go.dev/net/http#DetectContentType
+
+	return contents, nil
+}
+
+func (m integrationManager) getMarkdownFile(version integrationVersion, integrationPath string, mdPath string) (string, error) {
+	filePath := path.Join(integrationPath, mdPath)
+	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
+	if err != nil {
+		return "", fmt.Errorf("error reading contents of markdown file")
+	}
+
+	// TODO(jk): possibly add markdown validation
 
 	return contents, nil
 }
@@ -370,7 +380,7 @@ func (m integrationManager) ProcessCatalog() (fErr error) {
 func (m integrationManager) ProcessNamespace(basePath string, namespace string, vis versionedIntegrations) error {
 	processedIntegrations, err := m.ProcessIntegrations(basePath, namespace, vis)
 	if err != nil {
-		return fmt.Errorf("error processing integrations: %w", err)
+		return fmt.Errorf("error processing namespace: %w", err)
 	}
 
 	for integration, versions := range processedIntegrations {
@@ -408,6 +418,11 @@ func (m integrationManager) ProcessIntegration(basePath string, namespace string
 
 	for i, version := range versions {
 		if err := m.ProcessIntegrationVersion(version, integrationPath, basePath); err != nil {
+			log.Err(err).
+				Str("namespace", namespace).
+				Str("integration", integration).
+				Str("version", version.SemVer()).
+				Msg("error processing integration version")
 			failed = append(failed, version)
 		}
 
@@ -441,24 +456,32 @@ func (m integrationManager) ProcessIntegrationVersion(version integrationVersion
 		return err
 	}
 
-	resources, err := m.getIntegrationResources(version, integrationPath)
+	resourcesJSON, err := m.getIntegrationResources(version, integrationPath)
 	if err != nil {
 		return err
 	}
-	noop(resources)
 
 	logo, err := m.getIntegrationLogo(version, integrationPath)
 	if err != nil {
 		return err
 	}
-	noop(logo)
 
-	// TODO(jk): add README.md
-	// TODO(jk): add CHANGELOG.md
-	// TODO(jk): add images directory
+	readme, err := m.getMarkdownFile(version, integrationPath, "README.md")
+	if err != nil {
+		return err
+	}
+
+	changelog, err := m.getMarkdownFile(version, integrationPath, "CHANGELOG.md")
+	if err != nil {
+		return err
+	}
 
 	generateIntegrationVersionEndpoint(basePath, integration, version)
-	//generateIntegration
+	generateIntegrationVersionResourcesEndpoint(basePath, integration, version, resourcesJSON)
+	generateIntegrationVersionLogoEndpoint(basePath, integration, version, logo)
+	generateIntegrationVersionReadmeEndpoint(basePath, integration, version, readme)
+	generateIntegrationVersionChangelogEndpoint(basePath, integration, version, changelog)
+	// TODO(jk): add directory for images or extra files
 
 	return nil
 }

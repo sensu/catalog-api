@@ -16,7 +16,7 @@ type apiEndpoint interface {
 	GetData() interface{}
 }
 
-func generateEndpoint(endpoint apiEndpoint) error {
+func generateJSONEndpoint(endpoint apiEndpoint) error {
 	contents, err := json.Marshal(endpoint.GetData())
 	if err != nil {
 		return fmt.Errorf("error generating endpoint: %w", err)
@@ -38,6 +38,29 @@ func generateEndpoint(endpoint apiEndpoint) error {
 	return nil
 }
 
+func generateEndpoint(endpoint apiEndpoint) error {
+	contents, ok := endpoint.GetData().(string)
+	if !ok {
+		return fmt.Errorf("endpoint data is not a string")
+	}
+
+	outputPath := endpoint.GetOutputPath()
+
+	// ensure the parent directory exists
+	parent := filepath.Dir(outputPath)
+	if err := os.MkdirAll(parent, 0700); err != nil {
+		return fmt.Errorf("error creating endpoint parent directory: %w", err)
+	}
+
+	// write the endpoint contents to the output path
+	if err := os.WriteFile(outputPath, []byte(contents), 0600); err != nil {
+		return fmt.Errorf("error creating endpoint file: %w", err)
+	}
+
+	return nil
+}
+
+// GET /api/:generated_sha/v1/catalog.json
 func generateCatalogEndpoint(basePath string, nis namespacedIntegrations) error {
 	nsIntegrations := map[string][]string{}
 	for namespace, vis := range nis {
@@ -51,9 +74,10 @@ func generateCatalogEndpoint(basePath string, nis namespacedIntegrations) error 
 		NamespacedIntegrations: nsIntegrations,
 	}
 	endpoint := catalogapiv1.NewCatalogEndpoint(basePath, catalog)
-	return generateEndpoint(endpoint)
+	return generateJSONEndpoint(endpoint)
 }
 
+// GET /api/:generated_sha/v1/integrations/:namespace.json
 func generateIntegrationNamespaceEndpoint(basePath string, namespace string, ivs []integrationVersion) error {
 	integrations := []string{}
 	for _, iv := range ivs {
@@ -64,9 +88,10 @@ func generateIntegrationNamespaceEndpoint(basePath string, namespace string, ivs
 		Integrations: integrations,
 	}
 	endpoint := catalogapiv1.NewIntegrationNamespaceEndpoint(basePath, ns)
-	return generateEndpoint(endpoint)
+	return generateJSONEndpoint(endpoint)
 }
 
+// GET /api/:generated_sha/v1/integrations/:namespace/:name.json
 func generateIntegrationEndpoint(basePath string, integration catalogv1.Integration, ivs []integrationVersion) error {
 	versions := []string{}
 	for _, iv := range ivs {
@@ -77,32 +102,75 @@ func generateIntegrationEndpoint(basePath string, integration catalogv1.Integrat
 		Versions:    versions,
 	}
 	endpoint := catalogapiv1.NewIntegrationEndpoint(basePath, integrationWithVersions)
-	return generateEndpoint(endpoint)
+	return generateJSONEndpoint(endpoint)
 }
 
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/versions.json
 func generateIntegrationVersionsEndpoint(basePath string, namespace string, integration string, ivs []integrationVersion) error {
 	versions := []string{}
 	for _, iv := range ivs {
 		versions = append(versions, iv.SemVer())
 	}
 	endpoint := catalogapiv1.NewIntegrationVersionsEndpoint(basePath, namespace, integration, versions)
-	return generateEndpoint(endpoint)
+	return generateJSONEndpoint(endpoint)
 }
 
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version.json
 func generateIntegrationVersionEndpoint(basePath string, integration catalogv1.Integration, version integrationVersion) error {
 	iv := catalogapiv1.IntegrationVersion{
 		Integration: integration,
 		Version:     version.SemVer(),
 	}
 	endpoint := catalogapiv1.NewIntegrationVersionEndpoint(basePath, iv)
+	return generateJSONEndpoint(endpoint)
+}
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/resources.json
+func generateIntegrationVersionResourcesEndpoint(basePath string, integration catalogv1.Integration, version integrationVersion, data string) error {
+	iv := catalogapiv1.IntegrationVersion{
+		Integration: integration,
+		Version:     version.SemVer(),
+	}
+	endpoint := catalogapiv1.NewIntegrationVersionResourcesEndpoint(basePath, iv, data)
+	return generateJSONEndpoint(endpoint)
+}
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/logo.png
+func generateIntegrationVersionLogoEndpoint(basePath string, integration catalogv1.Integration, version integrationVersion, data string) error {
+	iv := catalogapiv1.IntegrationVersion{
+		Integration: integration,
+		Version:     version.SemVer(),
+	}
+	endpoint := catalogapiv1.NewIntegrationVersionLogoEndpoint(basePath, iv, data)
 	return generateEndpoint(endpoint)
 }
 
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/README.md
+func generateIntegrationVersionReadmeEndpoint(basePath string, integration catalogv1.Integration, version integrationVersion, data string) error {
+	iv := catalogapiv1.IntegrationVersion{
+		Integration: integration,
+		Version:     version.SemVer(),
+	}
+	endpoint := catalogapiv1.NewIntegrationVersionReadmeEndpoint(basePath, iv, data)
+	return generateEndpoint(endpoint)
+}
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/CHANGELOG.md
+func generateIntegrationVersionChangelogEndpoint(basePath string, integration catalogv1.Integration, version integrationVersion, data string) error {
+	iv := catalogapiv1.IntegrationVersion{
+		Integration: integration,
+		Version:     version.SemVer(),
+	}
+	endpoint := catalogapiv1.NewIntegrationVersionChangelogEndpoint(basePath, iv, data)
+	return generateEndpoint(endpoint)
+}
+
+// GET /api/version.json
 func generateVersionEndpoint(basePath string, sha256 string) error {
 	version := catalogapiv1.ReleaseVersion{
 		ReleaseSHA256: sha256,
 		LastUpdated:   time.Now().Unix(),
 	}
 	endpoint := catalogapiv1.NewVersionEndpoint(basePath, version)
-	return generateEndpoint(endpoint)
+	return generateJSONEndpoint(endpoint)
 }
