@@ -10,9 +10,11 @@ type CatalogEndpoint struct {
 	data       Catalog
 }
 
+func (e CatalogEndpoint) GetOutputPath() string { return e.outputPath }
+func (e CatalogEndpoint) GetData() interface{}  { return e.data }
+
 type Catalog struct {
-	Name         string                 `json:"name" yaml:"name"`
-	Integrations []IntegrationNamespace `json:"integrations" yaml:"integrations"`
+	NamespacedIntegrations map[string][]string `json:"namespaced_integrations" yaml:"namespaced_integrations"`
 }
 
 func NewCatalogEndpoint(basePath string, catalog Catalog) CatalogEndpoint {

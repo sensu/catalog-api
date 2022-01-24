@@ -31,8 +31,8 @@ func main() {
 			Msg("Failed to create integration manager")
 	}
 
-	// load & process all integrations
-	if err := im.ProcessIntegrationNamepaces(); err != nil {
+	// process the catalog & all its integrations
+	if err := im.ProcessCatalog(); err != nil {
 		log.Fatal().
 			Err(err).
 			Msg("Failed to process integrations")

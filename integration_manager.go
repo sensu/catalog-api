@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,12 +13,11 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	zerolog "github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 
 	catalogv1 "github.com/sensu/catalog-api/api/catalog/v1"
-	"golang.org/x/mod/sumdb/dirhash"
 )
 
 const semverRegex = `(?P<Major>0|[1-9]\d*)\.(?P<Minor>0|[1-9]\d*)\.(?P<Patch>0|[1-9]\d*)(?:-(?P<Prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<BuildMetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
@@ -34,6 +33,10 @@ type integrationVersion struct {
 	BuildMetadata string
 	GitTag        string
 	GitRef        string
+}
+
+func (i integrationVersion) String() string {
+	return fmt.Sprintf("%s/%s:%s", i.Namespace, i.Name, i.SemVer())
 }
 
 func (i integrationVersion) SemVer() string {
@@ -75,6 +78,84 @@ func newIntegrationManager(path string) (integrationManager, error) {
 	return im, nil
 }
 
+func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (integrationVersion, error) {
+	var iv integrationVersion
+
+	gitTag := tagRef.Name().Short()
+	gitRef := tagRef.Hash().String()
+
+	expr := fmt.Sprintf("^integrations/(?P<IntegrationNamespace>[a-z0-9_-]+)/(?P<IntegrationName>[a-z0-9_-]+)/%s$", semverRegex)
+	r := regexp.MustCompile(expr)
+	groupNames := r.SubexpNames()
+	groupValues := r.FindStringSubmatch(gitTag)
+	if len(groupValues) == 0 {
+		return iv, errors.New("skipping unmatched git tag")
+	}
+
+	groups := map[string]string{}
+	for i, groupValue := range groupValues {
+		groups[groupNames[i]] = groupValue
+	}
+
+	// verify that all of the required regex group keys were set
+	namespace, ok := groups["IntegrationNamespace"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: IntegrationNamespace")
+	}
+	name, ok := groups["IntegrationName"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: IntegrationName")
+	}
+	majorStr, ok := groups["Major"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: Major")
+	}
+	minorStr, ok := groups["Minor"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: Minor")
+	}
+	patchStr, ok := groups["Patch"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: Patch")
+	}
+	prerelease, ok := groups["Prerelease"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: Prerelease")
+	}
+	buildMetadata, ok := groups["BuildMetadata"]
+	if !ok {
+		return iv, errors.New("key not found in regex match: BuildMetadata")
+	}
+
+	// convert major, minor & patch versions to integers
+	major, err := strconv.Atoi(majorStr)
+	if err != nil {
+		return iv, fmt.Errorf("error converting major version to integer: %w", err)
+	}
+	minor, err := strconv.Atoi(minorStr)
+	if err != nil {
+		return iv, fmt.Errorf("error converting minor version to integer: %w", err)
+	}
+	patch, err := strconv.Atoi(patchStr)
+	if err != nil {
+		return iv, fmt.Errorf("error converting patch version to integer: %w", err)
+	}
+
+	iv = integrationVersion{
+		Name:          name,
+		Namespace:     namespace,
+		Major:         major,
+		Minor:         minor,
+		Patch:         patch,
+		Prerelease:    prerelease,
+		BuildMetadata: buildMetadata,
+		GitTag:        gitTag,
+		GitRef:        gitRef,
+	}
+
+	return iv, nil
+}
+
 func (m integrationManager) GetNamespacedIntegrations() (namespacedIntegrations, error) {
 	tags, err := m.repo.Tags()
 	if err != nil {
@@ -85,89 +166,29 @@ func (m integrationManager) GetNamespacedIntegrations() (namespacedIntegrations,
 
 	nsIntegrations := namespacedIntegrations{}
 	tags.ForEach(func(tagRef *plumbing.Reference) error {
-		gitTag := tagRef.Name().Short()
-		gitRef := tagRef.Hash().String()
-		logger := log.With().Str("tag", gitTag).Logger()
+		logger := log.With().Str("tag", tagRef.Name().Short()).Logger()
 
-		expr := fmt.Sprintf("^integrations/(?P<IntegrationNamespace>[a-z0-9_-]+)/(?P<IntegrationName>[a-z0-9_-]+)/%s$", semverRegex)
-		r := regexp.MustCompile(expr)
-		groupNames := r.SubexpNames()
-		groupValues := r.FindStringSubmatch(gitTag)
-		if len(groupValues) == 0 {
-			logger.Warn().Msg("Skipping unmatched git tag")
-			return nil
-		}
-		logger.Debug().Msg("Found matching git tag")
-
-		groups := map[string]string{}
-		for i, groupValue := range groupValues {
-			groups[groupNames[i]] = groupValue
-		}
-
-		name, ok := groups["IntegrationName"]
-		if !ok {
-			logger.Error().Str("key", "IntegrationName").Msg("Key not found in regex match")
-			return nil
-		}
-		namespace, ok := groups["IntegrationNamespace"]
-		if !ok {
-			logger.Error().Str("key", "IntegrationNamespace").Msg("Key not found in regex match")
-			return nil
-		}
-		major, err := strconv.Atoi(groups["Major"])
+		iv, err := getIntegrationVersionFromGitTag(tagRef)
 		if err != nil {
-			logger.Err(err).Str("major", groups["Major"]).Msg("Failed to convert major version to integer")
-			return nil
-		}
-		minor, err := strconv.Atoi(groups["Minor"])
-		if err != nil {
-			logger.Err(err).Str("minor", groups["Minor"]).Msg("Failed to convert minor version to integer")
-			return nil
-		}
-		patch, err := strconv.Atoi(groups["Patch"])
-		if err != nil {
-			logger.Err(err).Str("patch", groups["Patch"]).Msg("Failed to convert patch version to integer")
-			return nil
-		}
-		prerelease, ok := groups["Prerelease"]
-		if !ok {
-			logger.Error().Str("key", "Prerelease").Msg("Key not found in regex match")
-			return nil
-		}
-		buildMetadata, ok := groups["BuildMetadata"]
-		if !ok {
-			logger.Error().Str("key", "BuildMetadata").Msg("Key not found in regex match")
+			logger.Err(err).Msg("Failed to get integration version from git tag")
 			return nil
 		}
 
-		nsIntegration, ok := nsIntegrations[namespace]
+		nsIntegration, ok := nsIntegrations[iv.Namespace]
 		if !ok {
 			nsIntegration = versionedIntegrations{}
 		}
-		versions, ok := nsIntegration[name]
+		versions, ok := nsIntegration[iv.Name]
 		if !ok {
 			versions = []integrationVersion{}
 		}
-
-		iv := integrationVersion{
-			Name:          name,
-			Namespace:     namespace,
-			Major:         major,
-			Minor:         minor,
-			Patch:         patch,
-			Prerelease:    prerelease,
-			BuildMetadata: buildMetadata,
-			GitTag:        gitTag,
-			GitRef:        gitRef,
-		}
-
 		versions = append(versions, iv)
-		nsIntegration[name] = versions
-		nsIntegrations[namespace] = nsIntegration
+		nsIntegration[iv.Name] = versions
+		nsIntegrations[iv.Namespace] = nsIntegration
 
 		logger.Info().
-			Str("name", name).
-			Str("namespace", namespace).
+			Str("name", iv.Name).
+			Str("namespace", iv.Namespace).
 			Str("version", iv.SemVer()).
 			Msg("Found integration version")
 
@@ -262,6 +283,13 @@ func (m integrationManager) getIntegrationResources(version integrationVersion, 
 		return "", fmt.Errorf("error unmarshaling integration resources: %w", err)
 	}
 
+	nj, err := json.Marshal(node)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println(string(nj))
+
 	return contents, nil
 }
 
@@ -272,10 +300,12 @@ func (m integrationManager) getIntegrationLogo(version integrationVersion, integ
 		return "", fmt.Errorf("error reading contents of integration logo")
 	}
 
+	// TODO(jk): add basic validation using https://pkg.go.dev/net/http#DetectContentType
+
 	return contents, nil
 }
 
-func (m integrationManager) ProcessIntegrationNamepaces() (fErr error) {
+func (m integrationManager) ProcessCatalog() (fErr error) {
 	// get a list of namespaces & the integrations that belong to them from the
 	// list of git tags
 	nsIntegrations, err := m.GetNamespacedIntegrations()
@@ -296,17 +326,19 @@ func (m integrationManager) ProcessIntegrationNamepaces() (fErr error) {
 		return fmt.Errorf("error creating staging directory: %w", err)
 	}
 
+	processed := namespacedIntegrations{}
+
 	// loop through the list of namespaces & integrations, unmarshal the configs
 	// & resource files, and then generate the static api
 	for namespace, vis := range nsIntegrations {
 		logger := log.With().Str("namespace", namespace).Logger()
 
-		processedIntegrations, err := m.ProcessIntegrations(logger, vis, stagingDir)
-		if err != nil {
-			// no-op
+		if err := m.ProcessNamespace(stagingDir, namespace, vis); err != nil {
+			logger.Err(err).Msg("Failed to process namespace")
+			continue
 		}
 
-		noop(processedIntegrations)
+		processed[namespace] = vis
 	}
 
 	// calculate the sha256 checksum of the generated api
@@ -335,64 +367,72 @@ func (m integrationManager) ProcessIntegrationNamepaces() (fErr error) {
 	return fErr
 }
 
-func calculateDirChecksum(path string, prefix string) (string, error) {
-	// calculate sha256 checksum, which is returned as a base64 encoded string
-	// prefixed with "h1:"
-	h1, err := dirhash.HashDir(path, prefix, dirhash.Hash1)
+func (m integrationManager) ProcessNamespace(basePath string, namespace string, vis versionedIntegrations) error {
+	processedIntegrations, err := m.ProcessIntegrations(basePath, namespace, vis)
 	if err != nil {
-		return "", fmt.Errorf("error calculating checksum of dir: %w", err)
+		return fmt.Errorf("error processing integrations: %w", err)
 	}
 
-	// remove the "h1:" prefix
-	re := regexp.MustCompile(`^h1:`)
-	b64 := re.ReplaceAllString(h1, "")
-
-	// base64 decode string
-	bytes, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		return "", fmt.Errorf("error base64 decoding checksum: %w", err)
+	for integration, versions := range processedIntegrations {
+		generateIntegrationVersionsEndpoint(basePath, namespace, integration, versions)
 	}
 
-	return fmt.Sprintf("%x", bytes), nil
+	return nil
 }
 
-func (m integrationManager) ProcessIntegrations(logger zerolog.Logger, vis versionedIntegrations, basePath string) (processedIntegrations [][]integrationVersion, fErr error) {
-	for name, versions := range vis {
-		logger := log.With().Str("name", name).Logger()
+func (m integrationManager) ProcessIntegrations(basePath string, namespace string, vis versionedIntegrations) (versionedIntegrations, error) {
+	processed := versionedIntegrations{}
+	failed := versionedIntegrations{}
 
-		processedVersions, err := m.ProcessIntegration(logger, versions, basePath)
-		if err != nil {
-			logger.Err(err).Msg("Failed to process integration")
-			if fErr == nil {
-				fErr = errors.New("failed to process one or more integrations")
-			}
+	for integration, versions := range vis {
+		if err := m.ProcessIntegration(basePath, namespace, integration, versions); err != nil {
+			failed[integration] = versions
 			continue
 		}
 
-		noop(processedVersions)
-
-		processedIntegrations = append(processedIntegrations, versions)
+		processed[integration] = versions
 	}
-	return
+
+	if len(failed) > 0 {
+		return processed, fmt.Errorf("error processing integrations: %s", failed)
+	}
+
+	return processed, nil
 }
 
-func (m integrationManager) ProcessIntegration(logger zerolog.Logger, versions []integrationVersion, basePath string) (processedVersions []integrationVersion, fErr error) {
-	for _, version := range versions {
-		logger := log.With().Str("version", version.SemVer()).Logger()
-		logger.Debug().Msg("Processing integration version")
+func (m integrationManager) ProcessIntegration(basePath string, namespace string, integration string, versions []integrationVersion) error {
+	processed := []integrationVersion{}
+	failed := []integrationVersion{}
+	latestVersion := integrationVersion{}
+	integrationPath := path.Join("integrations", namespace, integration)
 
-		// attempt to get files from git
-		integrationPath := path.Join("integrations", version.Namespace, version.Name)
-		err := m.ProcessIntegrationVersion(version, integrationPath, basePath)
-		if err != nil {
-			logger.Err(err).Msg("Failed to process integration version")
-			if fErr == nil {
-				fErr = errors.New("failed to process one or more integration versions")
-			}
+	for i, version := range versions {
+		if err := m.ProcessIntegrationVersion(version, integrationPath, basePath); err != nil {
+			failed = append(failed, version)
 		}
-		processedVersions = append(processedVersions, version)
+
+		processed = append(processed, version)
+
+		if i != 0 {
+			if semver.Compare(latestVersion.SemVer(), version.SemVer()) == -1 {
+				latestVersion = version
+			}
+		} else {
+			latestVersion = version
+		}
 	}
-	return
+
+	integrationConfig, err := m.getIntegrationConfig(latestVersion, integrationPath)
+	if err != nil {
+		return err
+	}
+	generateIntegrationEndpoint(basePath, integrationConfig, versions)
+
+	if len(failed) > 0 {
+		return fmt.Errorf("error processing integration versions: %s", failed)
+	}
+
+	return nil
 }
 
 func (m integrationManager) ProcessIntegrationVersion(version integrationVersion, integrationPath string, basePath string) error {
@@ -413,7 +453,12 @@ func (m integrationManager) ProcessIntegrationVersion(version integrationVersion
 	}
 	noop(logo)
 
+	// TODO(jk): add README.md
+	// TODO(jk): add CHANGELOG.md
+	// TODO(jk): add images directory
+
 	generateIntegrationVersionEndpoint(basePath, integration, version)
+	//generateIntegration
 
 	return nil
 }

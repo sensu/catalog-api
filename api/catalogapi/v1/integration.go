@@ -41,22 +41,22 @@ type IntegrationVersionsEndpoint struct {
 	data       []string
 }
 
-type IntegrationWithVersions struct {
-	catalogv1.Integration
-	Versions []string `json:"versions" yaml:"versions"`
-}
+func (e IntegrationVersionsEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionsEndpoint) GetData() interface{}  { return e.data }
 
-func NewIntegrationVersionsEndpoint(basePath string, ivs IntegrationWithVersions) IntegrationVersionsEndpoint {
+type IntegrationVersions []string
+
+func NewIntegrationVersionsEndpoint(basePath string, namespace string, integration string, versions IntegrationVersions) IntegrationVersionsEndpoint {
 	outputPath := path.Join(
 		basePath,
 		apiVersion,
-		ivs.Metadata.Namespace,
-		ivs.Metadata.Name,
+		namespace,
+		integration,
 		"versions.json")
 
 	return IntegrationVersionsEndpoint{
 		outputPath: outputPath,
-		data:       ivs.Versions,
+		data:       versions,
 	}
 }
 
@@ -64,6 +64,14 @@ func NewIntegrationVersionsEndpoint(basePath string, ivs IntegrationWithVersions
 type IntegrationEndpoint struct {
 	outputPath string
 	data       IntegrationWithVersions
+}
+
+func (e IntegrationEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationEndpoint) GetData() interface{}  { return e.data }
+
+type IntegrationWithVersions struct {
+	catalogv1.Integration
+	Versions []string `json:"versions" yaml:"versions"`
 }
 
 func NewIntegrationEndpoint(basePath string, ivs IntegrationWithVersions) IntegrationEndpoint {
@@ -85,6 +93,9 @@ type IntegrationNamespaceEndpoint struct {
 	data       IntegrationNamespace
 }
 
+func (e IntegrationNamespaceEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationNamespaceEndpoint) GetData() interface{}  { return e.data }
+
 type IntegrationNamespace struct {
 	Name         string   `json:"name" yaml:"name"`
 	Integrations []string `json:"integrations" yaml:"integrations"`
@@ -97,24 +108,6 @@ func NewIntegrationNamespaceEndpoint(basePath string, ns IntegrationNamespace) I
 		fmt.Sprintf("%s.json", ns.Name))
 
 	return IntegrationNamespaceEndpoint{
-		outputPath: outputPath,
-		data:       ns,
-	}
-}
-
-// GET /api/:generated_sha/v1/integrations.json
-type IntegrationNamespacesEndpoint struct {
-	outputPath string
-	data       []string
-}
-
-func NewIntegrationNamespacesEndpoint(basePath string, ns []string) IntegrationNamespacesEndpoint {
-	outputPath := path.Join(
-		basePath,
-		apiVersion,
-		"integrations.json")
-
-	return IntegrationNamespacesEndpoint{
 		outputPath: outputPath,
 		data:       ns,
 	}
