@@ -1,4 +1,4 @@
-package main
+package v1
 
 import (
 	"fmt"
@@ -8,34 +8,34 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type rawWrapper struct {
+type RawWrapper struct {
 	Type       string          `json:"type" yaml:"type"`
 	APIVersion string          `json:"api_version" yaml:"api_version"`
 	Metadata   metav1.Metadata `json:"metadata" yaml:"metadata"`
 	Value      yaml.Node       `json:"spec" yaml:"spec"`
 }
 
-func rawWrapperFromYAMLBytes(bytes []byte) (rawWrapper, error) {
-	raw := rawWrapper{}
+func RawWrapperFromYAMLBytes(bytes []byte) (RawWrapper, error) {
+	raw := RawWrapper{}
 	if err := yaml.Unmarshal([]byte(bytes), &raw); err != nil {
 		return raw, fmt.Errorf("error unmarshaling raw wrapper: %w", err)
 	}
 	return raw, nil
 }
 
-type wrapper struct {
+type Wrapper struct {
 	Type       string          `json:"type" yaml:"type"`
 	APIVersion string          `json:"api_version" yaml:"api_version"`
 	Metadata   metav1.Metadata `json:"metadata" yaml:"metadata"`
 	Value      interface{}     `json:"spec" yaml:"spec"`
 }
 
-func (w wrapper) TypeVersion() string {
+func (w Wrapper) TypeVersion() string {
 	return fmt.Sprintf("%s.%s", w.APIVersion, w.Type)
 }
 
-func wrapperFromRawWrapper(raw rawWrapper) (wrapper, error) {
-	wrap := wrapper{
+func WrapperFromRawWrapper(raw RawWrapper) (Wrapper, error) {
+	wrap := Wrapper{
 		Type:       raw.Type,
 		APIVersion: raw.APIVersion,
 		Metadata:   raw.Metadata,

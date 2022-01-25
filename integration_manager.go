@@ -18,6 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	catalogv1 "github.com/sensu/catalog-api/api/catalog/v1"
+	wrapperv1 "github.com/sensu/catalog-api/api/wrapper/v1"
 )
 
 const semverRegex = `(?P<Major>0|[1-9]\d*)\.(?P<Minor>0|[1-9]\d*)\.(?P<Patch>0|[1-9]\d*)(?:-(?P<Prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<BuildMetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
@@ -253,12 +254,12 @@ func (m integrationManager) getIntegrationConfig(version integrationVersion, int
 		return integration, fmt.Errorf("error reading contents of integration config")
 	}
 
-	raw, err := rawWrapperFromYAMLBytes([]byte(contents))
+	raw, err := wrapperv1.RawWrapperFromYAMLBytes([]byte(contents))
 	if err != nil {
 		return integration, err
 	}
 
-	wrap, err := wrapperFromRawWrapper(raw)
+	wrap, err := wrapperv1.WrapperFromRawWrapper(raw)
 	if err != nil {
 		return integration, err
 	}
