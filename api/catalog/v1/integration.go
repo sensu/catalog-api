@@ -3,11 +3,8 @@ package v1
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	metav1 "github.com/sensu/catalog-api/api/metadata/v1"
-	"github.com/sensu/sensu-go/types"
-	"gopkg.in/yaml.v3"
 )
 
 type Integration struct {
@@ -81,24 +78,4 @@ func isValidClass(class string) bool {
 		}
 	}
 	return false
-}
-
-func LoadIntegrationFromYAMLFile(path string) (Integration, error) {
-	var wrapper types.Wrapper
-	var integration Integration
-
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return integration, err
-	}
-
-	if err := yaml.Unmarshal(file, wrapper); err != nil {
-		return integration, err
-	}
-
-	if wrapper.APIVersion != APIVersion {
-		return integration, fmt.Errorf("")
-	}
-
-	return integration, integration.Validate()
 }
