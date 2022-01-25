@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -22,19 +23,22 @@ func main() {
 	}
 	log.Info().Str("path", workingDir).Msg("Using base directory")
 
-	// create a new integration manager which is used to determine versions from
-	// git tags, unmarshal resources, and generate the api
-	im, err := newIntegrationManager(workingDir)
+	// create a new catalog manager which is used to determine versions from git
+	// tags, unmarshal resources, and generate the api
+	m, err := newCatalogManager(workingDir)
 	if err != nil {
 		log.Fatal().
 			Err(err).
-			Msg("Failed to create integration manager")
+			Msg("Failed to create catalog manager")
 	}
 
 	// process the catalog & all its integrations
-	if err := im.ProcessCatalog(); err != nil {
+	releasePath, err := m.ProcessCatalog()
+	if err != nil {
 		log.Fatal().
 			Err(err).
 			Msg("Failed to process integrations")
 	}
+
+	fmt.Printf("::set-output name=release_path::%s\n", releasePath)
 }

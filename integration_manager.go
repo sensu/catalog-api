@@ -61,22 +61,22 @@ type versionedIntegrations map[string][]integrationVersion
 // namespacedIntegrations is a mapping of namespaces to versionedIntegrations
 type namespacedIntegrations map[string]versionedIntegrations
 
-type integrationManager struct {
+type catalogManager struct {
 	repo *git.Repository
 }
 
-func newIntegrationManager(path string) (integrationManager, error) {
-	var im integrationManager
+func newCatalogManager(path string) (catalogManager, error) {
+	var m catalogManager
 
 	repo, err := git.PlainOpen(path)
 	if err != nil {
-		return im, err
+		return m, err
 	}
 
-	im = integrationManager{
+	m = catalogManager{
 		repo: repo,
 	}
-	return im, nil
+	return m, nil
 }
 
 func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (integrationVersion, error) {
@@ -157,7 +157,7 @@ func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (integrationVer
 	return iv, nil
 }
 
-func (m integrationManager) GetNamespacedIntegrations() (namespacedIntegrations, error) {
+func (m catalogManager) GetNamespacedIntegrations() (namespacedIntegrations, error) {
 	tags, err := m.repo.Tags()
 	if err != nil {
 		log.Fatal().
@@ -210,7 +210,7 @@ func loadFileFromGitTreePaths(tree *object.Tree, filePaths []string) (*object.Fi
 	return nil, fmt.Errorf("failed to load file from any of the provided paths: %s", filePaths)
 }
 
-func (m integrationManager) getFileContentsAtGitRef(ref string, filePath string) (string, error) {
+func (m catalogManager) getFileContentsAtGitRef(ref string, filePath string) (string, error) {
 	// attempt to resolve the git ref to a revision
 	hash, err := m.repo.ResolveRevision(plumbing.Revision(ref))
 	if err != nil {
@@ -244,7 +244,7 @@ func (m integrationManager) getFileContentsAtGitRef(ref string, filePath string)
 	return contents, nil
 }
 
-func (m integrationManager) getIntegrationConfig(version integrationVersion, integrationPath string) (catalogv1.Integration, error) {
+func (m catalogManager) getIntegrationConfig(version integrationVersion, integrationPath string) (catalogv1.Integration, error) {
 	var integration catalogv1.Integration
 
 	// TODO(jk): support both .yaml & .yml extensions
@@ -268,7 +268,7 @@ func (m integrationManager) getIntegrationConfig(version integrationVersion, int
 	return integration, nil
 }
 
-func (m integrationManager) getIntegrationResources(version integrationVersion, integrationPath string) (string, error) {
+func (m catalogManager) getIntegrationResources(version integrationVersion, integrationPath string) (string, error) {
 	// TODO(jk): support both .yaml & .yml extensions
 	filePath := path.Join(integrationPath, "sensu-resources.yaml")
 	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
@@ -292,7 +292,7 @@ func (m integrationManager) getIntegrationResources(version integrationVersion, 
 	return string(resourcesJSON), nil
 }
 
-func (m integrationManager) getIntegrationLogo(version integrationVersion, integrationPath string) (string, error) {
+func (m catalogManager) getIntegrationLogo(version integrationVersion, integrationPath string) (string, error) {
 	filePath := path.Join(integrationPath, "logo.png")
 	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
 	if err != nil {
@@ -304,7 +304,7 @@ func (m integrationManager) getIntegrationLogo(version integrationVersion, integ
 	return contents, nil
 }
 
-func (m integrationManager) getMarkdownFile(version integrationVersion, integrationPath string, mdPath string) (string, error) {
+func (m catalogManager) getMarkdownFile(version integrationVersion, integrationPath string, mdPath string) (string, error) {
 	filePath := path.Join(integrationPath, mdPath)
 	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
 	if err != nil {
@@ -316,25 +316,25 @@ func (m integrationManager) getMarkdownFile(version integrationVersion, integrat
 	return contents, nil
 }
 
-func (m integrationManager) ProcessCatalog() (fErr error) {
+func (m catalogManager) ProcessCatalog() (string, error) {
 	// get a list of namespaces & the integrations that belong to them from the
 	// list of git tags
 	nsIntegrations, err := m.GetNamespacedIntegrations()
 	if err != nil {
-		return fmt.Errorf("error retrieving list of integrations from git tags: %w", err)
+		return "", fmt.Errorf("error retrieving list of integrations from git tags: %w", err)
 	}
 
 	// create a temp dir to hold the generated api files
 	tmpDir, err := os.MkdirTemp("", "sensu-catalog-api-")
 	if err != nil {
-		return fmt.Errorf("error creating tmp directory: %w", err)
+		return "", fmt.Errorf("error creating tmp directory: %w", err)
 	}
 
 	// create a staging dir to hold the generated api files used to calculate
 	// the checksum of the release
 	stagingDir := path.Join(tmpDir, "staging")
 	if err := os.Mkdir(stagingDir, 0700); err != nil {
-		return fmt.Errorf("error creating staging directory: %w", err)
+		return "", fmt.Errorf("error creating staging directory: %w", err)
 	}
 
 	processed := namespacedIntegrations{}
@@ -355,30 +355,28 @@ func (m integrationManager) ProcessCatalog() (fErr error) {
 	// calculate the sha256 checksum of the generated api
 	checksum, err := calculateDirChecksum(stagingDir, "staging")
 	if err != nil {
-		return fmt.Errorf("error calculating checksum of release: %w", err)
+		return "", fmt.Errorf("error calculating checksum of release: %w", err)
 	}
 
 	// create a release dir to hold the complete set of generated api files
 	releaseDir := path.Join(tmpDir, "release")
 	if err := os.Mkdir(releaseDir, 0700); err != nil {
-		return fmt.Errorf("error creating release directory: %w", err)
+		return "", fmt.Errorf("error creating release directory: %w", err)
 	}
 
 	// copy the staging dir to the release dir
 	dstPath := path.Join(releaseDir, checksum)
 	cmd := exec.Command("cp", "-R", stagingDir, dstPath)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error copying staging files to release dir: %w", err)
+		return "", fmt.Errorf("error copying staging files to release dir: %w", err)
 	}
 
 	generateVersionEndpoint(releaseDir, checksum)
 
-	fmt.Println(releaseDir)
-
-	return fErr
+	return releaseDir, nil
 }
 
-func (m integrationManager) ProcessNamespace(basePath string, namespace string, vis versionedIntegrations) error {
+func (m catalogManager) ProcessNamespace(basePath string, namespace string, vis versionedIntegrations) error {
 	processedIntegrations, err := m.ProcessIntegrations(basePath, namespace, vis)
 	if err != nil {
 		return fmt.Errorf("error processing namespace: %w", err)
@@ -391,7 +389,7 @@ func (m integrationManager) ProcessNamespace(basePath string, namespace string, 
 	return nil
 }
 
-func (m integrationManager) ProcessIntegrations(basePath string, namespace string, vis versionedIntegrations) (versionedIntegrations, error) {
+func (m catalogManager) ProcessIntegrations(basePath string, namespace string, vis versionedIntegrations) (versionedIntegrations, error) {
 	processed := versionedIntegrations{}
 	failed := versionedIntegrations{}
 
@@ -411,7 +409,7 @@ func (m integrationManager) ProcessIntegrations(basePath string, namespace strin
 	return processed, nil
 }
 
-func (m integrationManager) ProcessIntegration(basePath string, namespace string, integration string, versions []integrationVersion) error {
+func (m catalogManager) ProcessIntegration(basePath string, namespace string, integration string, versions []integrationVersion) error {
 	processed := []integrationVersion{}
 	failed := []integrationVersion{}
 	latestVersion := integrationVersion{}
@@ -451,7 +449,7 @@ func (m integrationManager) ProcessIntegration(basePath string, namespace string
 	return nil
 }
 
-func (m integrationManager) ProcessIntegrationVersion(version integrationVersion, integrationPath string, basePath string) error {
+func (m catalogManager) ProcessIntegrationVersion(version integrationVersion, integrationPath string, basePath string) error {
 	integration, err := m.getIntegrationConfig(version, integrationPath)
 	if err != nil {
 		return err
@@ -486,5 +484,3 @@ func (m integrationManager) ProcessIntegrationVersion(version integrationVersion
 
 	return nil
 }
-
-func noop(_ interface{}) {}
