@@ -23,7 +23,7 @@ func NewIntegrationVersionResourcesEndpoint(basePath string, iv IntegrationVersi
 		iv.Integration.Metadata.Namespace,
 		iv.Integration.Metadata.Name,
 		iv.Version,
-		"resources.json")
+		"sensu-resources.json")
 
 	return IntegrationVersionResourcesEndpoint{
 		outputPath: outputPath,
