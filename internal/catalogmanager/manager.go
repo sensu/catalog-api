@@ -1,10 +1,9 @@
-package main
+package catalogmanager
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"path"
 	"regexp"
@@ -17,75 +16,63 @@ import (
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 
-	catalogv1 "github.com/sensu/catalog-api/api/catalog/v1"
-	wrapperv1 "github.com/sensu/catalog-api/api/wrapper/v1"
+	catalogv1 "github.com/sensu/catalog-api/internal/api/catalog/v1"
+	"github.com/sensu/catalog-api/internal/endpoints"
+	"github.com/sensu/catalog-api/internal/types"
+	"github.com/sensu/catalog-api/internal/util"
 )
 
 const semverRegex = `(?P<Major>0|[1-9]\d*)\.(?P<Minor>0|[1-9]\d*)\.(?P<Patch>0|[1-9]\d*)(?:-(?P<Prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<BuildMetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
 
-// integrationVersion is a representation of a single integration version
-type integrationVersion struct {
-	Name          string
-	Namespace     string
-	Major         int
-	Minor         int
-	Patch         int
-	Prerelease    string
-	BuildMetadata string
-	GitTag        string
-	GitRef        string
+type Config struct {
+	RepoDir    string
+	StagingDir string
+	ReleaseDir string
 }
 
-func (i integrationVersion) String() string {
-	return fmt.Sprintf("%s/%s:%s", i.Namespace, i.Name, i.SemVer())
-}
-
-func (i integrationVersion) SemVer() string {
-	version := fmt.Sprintf("%d.%d.%d", i.Major, i.Minor, i.Patch)
-
-	if i.Prerelease != "" {
-		version = fmt.Sprintf("%s-%s", version, i.Prerelease)
+func (c Config) validate() error {
+	if c.RepoDir == "" {
+		return errors.New("repo dir must not be empty")
 	}
-
-	if i.BuildMetadata != "" {
-		version = fmt.Sprintf("%s+%s", version, i.BuildMetadata)
+	if c.StagingDir == "" {
+		return errors.New("staging dir must not be empty")
 	}
-
-	return version
+	if c.ReleaseDir == "" {
+		return errors.New("release dir must not be empty")
+	}
+	return nil
 }
-
-// versionedIntegrations is a mapping of integration names to
-// integrationVersions
-type versionedIntegrations map[string][]integrationVersion
-
-// namespacedIntegrations is a mapping of namespaces to versionedIntegrations
-type namespacedIntegrations map[string]versionedIntegrations
 
 type catalogManager struct {
-	repo *git.Repository
+	config Config
+	repo   *git.Repository
 }
 
-func newCatalogManager(path string) (catalogManager, error) {
-	var m catalogManager
+func New(config Config) (catalogManager, error) {
+	m := catalogManager{
+		config: config,
+	}
 
-	repo, err := git.PlainOpen(path)
+	if err := config.validate(); err != nil {
+		return m, fmt.Errorf("catalog manager config validation failed: %w", err)
+	}
+
+	repo, err := git.PlainOpen(config.RepoDir)
 	if err != nil {
 		return m, err
 	}
+	m.repo = repo
 
-	m = catalogManager{
-		repo: repo,
-	}
 	return m, nil
 }
 
-func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (integrationVersion, error) {
-	var iv integrationVersion
+func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (types.IntegrationVersion, error) {
+	var iv types.IntegrationVersion
 
 	gitTag := tagRef.Name().Short()
 	gitRef := tagRef.Hash().String()
 
-	expr := fmt.Sprintf("^integrations/(?P<IntegrationNamespace>[a-z0-9_-]+)/(?P<IntegrationName>[a-z0-9_-]+)/%s$", semverRegex)
+	expr := fmt.Sprintf("^(?P<IntegrationNamespace>[a-z0-9_-]+)/(?P<IntegrationName>[a-z0-9_-]+)/%s$", semverRegex)
 	r := regexp.MustCompile(expr)
 	groupNames := r.SubexpNames()
 	groupValues := r.FindStringSubmatch(gitTag)
@@ -142,7 +129,7 @@ func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (integrationVer
 		return iv, fmt.Errorf("error converting patch version to integer: %w", err)
 	}
 
-	iv = integrationVersion{
+	iv = types.IntegrationVersion{
 		Name:          name,
 		Namespace:     namespace,
 		Major:         major,
@@ -157,7 +144,7 @@ func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (integrationVer
 	return iv, nil
 }
 
-func (m catalogManager) GetNamespacedIntegrations() (namespacedIntegrations, error) {
+func (m catalogManager) GetNamespacedIntegrations() (types.NamespacedIntegrations, error) {
 	tags, err := m.repo.Tags()
 	if err != nil {
 		log.Fatal().
@@ -165,7 +152,7 @@ func (m catalogManager) GetNamespacedIntegrations() (namespacedIntegrations, err
 			Msgf("Failed to determine git tags")
 	}
 
-	nsIntegrations := namespacedIntegrations{}
+	nsIntegrations := types.NamespacedIntegrations{}
 	tags.ForEach(func(tagRef *plumbing.Reference) error {
 		logger := log.With().Str("tag", tagRef.Name().Short()).Logger()
 
@@ -177,11 +164,11 @@ func (m catalogManager) GetNamespacedIntegrations() (namespacedIntegrations, err
 
 		nsIntegration, ok := nsIntegrations[iv.Namespace]
 		if !ok {
-			nsIntegration = versionedIntegrations{}
+			nsIntegration = types.VersionedIntegrations{}
 		}
 		versions, ok := nsIntegration[iv.Name]
 		if !ok {
-			versions = []integrationVersion{}
+			versions = []types.IntegrationVersion{}
 		}
 		versions = append(versions, iv)
 		nsIntegration[iv.Name] = versions
@@ -244,7 +231,7 @@ func (m catalogManager) getFileContentsAtGitRef(ref string, filePath string) (st
 	return contents, nil
 }
 
-func (m catalogManager) getIntegrationConfig(version integrationVersion, integrationPath string) (catalogv1.Integration, error) {
+func (m catalogManager) getIntegrationConfig(version types.IntegrationVersion, integrationPath string) (catalogv1.Integration, error) {
 	var integration catalogv1.Integration
 
 	// TODO(jk): support both .yaml & .yml extensions
@@ -254,12 +241,12 @@ func (m catalogManager) getIntegrationConfig(version integrationVersion, integra
 		return integration, fmt.Errorf("error reading contents of integration config")
 	}
 
-	raw, err := wrapperv1.RawWrapperFromYAMLBytes([]byte(contents))
+	raw, err := types.RawWrapperFromYAMLBytes([]byte(contents))
 	if err != nil {
 		return integration, err
 	}
 
-	wrap, err := wrapperv1.WrapperFromRawWrapper(raw)
+	wrap, err := types.WrapperFromRawWrapper(raw)
 	if err != nil {
 		return integration, err
 	}
@@ -268,7 +255,7 @@ func (m catalogManager) getIntegrationConfig(version integrationVersion, integra
 	return integration, nil
 }
 
-func (m catalogManager) getIntegrationResources(version integrationVersion, integrationPath string) (string, error) {
+func (m catalogManager) getIntegrationResources(version types.IntegrationVersion, integrationPath string) (string, error) {
 	// TODO(jk): support both .yaml & .yml extensions
 	filePath := path.Join(integrationPath, "sensu-resources.yaml")
 	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
@@ -292,7 +279,7 @@ func (m catalogManager) getIntegrationResources(version integrationVersion, inte
 	return string(resourcesJSON), nil
 }
 
-func (m catalogManager) getIntegrationLogo(version integrationVersion, integrationPath string) (string, error) {
+func (m catalogManager) getIntegrationLogo(version types.IntegrationVersion, integrationPath string) (string, error) {
 	filePath := path.Join(integrationPath, "logo.png")
 	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
 	if err != nil {
@@ -304,7 +291,7 @@ func (m catalogManager) getIntegrationLogo(version integrationVersion, integrati
 	return contents, nil
 }
 
-func (m catalogManager) getMarkdownFile(version integrationVersion, integrationPath string, mdPath string) (string, error) {
+func (m catalogManager) getMarkdownFile(version types.IntegrationVersion, integrationPath string, mdPath string) (string, error) {
 	filePath := path.Join(integrationPath, mdPath)
 	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
 	if err != nil {
@@ -316,35 +303,22 @@ func (m catalogManager) getMarkdownFile(version integrationVersion, integrationP
 	return contents, nil
 }
 
-func (m catalogManager) ProcessCatalog() (string, error) {
+func (m catalogManager) ProcessCatalog() error {
 	// get a list of namespaces & the integrations that belong to them from the
 	// list of git tags
 	nsIntegrations, err := m.GetNamespacedIntegrations()
 	if err != nil {
-		return "", fmt.Errorf("error retrieving list of integrations from git tags: %w", err)
+		return fmt.Errorf("error retrieving list of integrations from git tags: %w", err)
 	}
 
-	// create a temp dir to hold the generated api files
-	tmpDir, err := os.MkdirTemp("", "sensu-catalog-api-")
-	if err != nil {
-		return "", fmt.Errorf("error creating tmp directory: %w", err)
-	}
-
-	// create a staging dir to hold the generated api files used to calculate
-	// the checksum of the release
-	stagingDir := path.Join(tmpDir, "staging")
-	if err := os.Mkdir(stagingDir, 0700); err != nil {
-		return "", fmt.Errorf("error creating staging directory: %w", err)
-	}
-
-	processed := namespacedIntegrations{}
+	processed := types.NamespacedIntegrations{}
 
 	// loop through the list of namespaces & integrations, unmarshal the configs
 	// & resource files, and then generate the static api
 	for namespace, vis := range nsIntegrations {
 		logger := log.With().Str("namespace", namespace).Logger()
 
-		if err := m.ProcessNamespace(stagingDir, namespace, vis); err != nil {
+		if err := m.ProcessNamespace(namespace, vis); err != nil {
 			logger.Err(err).Msg("Failed to process namespace")
 			continue
 		}
@@ -353,48 +327,42 @@ func (m catalogManager) ProcessCatalog() (string, error) {
 	}
 
 	// calculate the sha256 checksum of the generated api
-	checksum, err := calculateDirChecksum(stagingDir, "staging")
+	checksum, err := util.CalculateDirChecksum(m.config.StagingDir, "staging")
 	if err != nil {
-		return "", fmt.Errorf("error calculating checksum of release: %w", err)
-	}
-
-	// create a release dir to hold the complete set of generated api files
-	releaseDir := path.Join(tmpDir, "release")
-	if err := os.Mkdir(releaseDir, 0700); err != nil {
-		return "", fmt.Errorf("error creating release directory: %w", err)
+		return fmt.Errorf("error calculating checksum of staging dir: %w", err)
 	}
 
 	// copy the staging dir to the release dir
-	dstPath := path.Join(releaseDir, checksum)
-	cmd := exec.Command("cp", "-R", stagingDir, dstPath)
+	dstPath := path.Join(m.config.ReleaseDir, checksum)
+	cmd := exec.Command("cp", "-R", m.config.StagingDir, dstPath)
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error copying staging files to release dir: %w", err)
+		return fmt.Errorf("error copying staging files to release dir: %w", err)
 	}
 
-	generateVersionEndpoint(releaseDir, checksum)
+	endpoints.GenerateVersionEndpoint(m.config.ReleaseDir, checksum)
 
-	return releaseDir, nil
+	return nil
 }
 
-func (m catalogManager) ProcessNamespace(basePath string, namespace string, vis versionedIntegrations) error {
-	processedIntegrations, err := m.ProcessIntegrations(basePath, namespace, vis)
+func (m catalogManager) ProcessNamespace(namespace string, vis types.VersionedIntegrations) error {
+	processedIntegrations, err := m.ProcessIntegrations(namespace, vis)
 	if err != nil {
 		return fmt.Errorf("error processing namespace: %w", err)
 	}
 
 	for integration, versions := range processedIntegrations {
-		generateIntegrationVersionsEndpoint(basePath, namespace, integration, versions)
+		endpoints.GenerateIntegrationVersionsEndpoint(m.config.StagingDir, namespace, integration, versions)
 	}
 
 	return nil
 }
 
-func (m catalogManager) ProcessIntegrations(basePath string, namespace string, vis versionedIntegrations) (versionedIntegrations, error) {
-	processed := versionedIntegrations{}
-	failed := versionedIntegrations{}
+func (m catalogManager) ProcessIntegrations(namespace string, vis types.VersionedIntegrations) (types.VersionedIntegrations, error) {
+	processed := types.VersionedIntegrations{}
+	failed := types.VersionedIntegrations{}
 
 	for integration, versions := range vis {
-		if err := m.ProcessIntegration(basePath, namespace, integration, versions); err != nil {
+		if err := m.ProcessIntegration(namespace, integration, versions); err != nil {
 			failed[integration] = versions
 			continue
 		}
@@ -409,14 +377,14 @@ func (m catalogManager) ProcessIntegrations(basePath string, namespace string, v
 	return processed, nil
 }
 
-func (m catalogManager) ProcessIntegration(basePath string, namespace string, integration string, versions []integrationVersion) error {
-	processed := []integrationVersion{}
-	failed := []integrationVersion{}
-	latestVersion := integrationVersion{}
+func (m catalogManager) ProcessIntegration(namespace string, integration string, versions []types.IntegrationVersion) error {
+	processed := []types.IntegrationVersion{}
+	failed := []types.IntegrationVersion{}
+	latestVersion := types.IntegrationVersion{}
 	integrationPath := path.Join("integrations", namespace, integration)
 
 	for i, version := range versions {
-		if err := m.ProcessIntegrationVersion(version, integrationPath, basePath); err != nil {
+		if err := m.ProcessIntegrationVersion(version, integrationPath); err != nil {
 			log.Err(err).
 				Str("namespace", namespace).
 				Str("integration", integration).
@@ -440,7 +408,7 @@ func (m catalogManager) ProcessIntegration(basePath string, namespace string, in
 	if err != nil {
 		return err
 	}
-	generateIntegrationEndpoint(basePath, integrationConfig, versions)
+	endpoints.GenerateIntegrationEndpoint(m.config.StagingDir, integrationConfig, versions)
 
 	if len(failed) > 0 {
 		return fmt.Errorf("error processing integration versions: %s", failed)
@@ -449,7 +417,7 @@ func (m catalogManager) ProcessIntegration(basePath string, namespace string, in
 	return nil
 }
 
-func (m catalogManager) ProcessIntegrationVersion(version integrationVersion, integrationPath string, basePath string) error {
+func (m catalogManager) ProcessIntegrationVersion(version types.IntegrationVersion, integrationPath string) error {
 	integration, err := m.getIntegrationConfig(version, integrationPath)
 	if err != nil {
 		return err
@@ -475,11 +443,11 @@ func (m catalogManager) ProcessIntegrationVersion(version integrationVersion, in
 		return err
 	}
 
-	generateIntegrationVersionEndpoint(basePath, integration, version)
-	generateIntegrationVersionResourcesEndpoint(basePath, integration, version, resourcesJSON)
-	generateIntegrationVersionLogoEndpoint(basePath, integration, version, logo)
-	generateIntegrationVersionReadmeEndpoint(basePath, integration, version, readme)
-	generateIntegrationVersionChangelogEndpoint(basePath, integration, version, changelog)
+	endpoints.GenerateIntegrationVersionEndpoint(m.config.StagingDir, integration, version)
+	endpoints.GenerateIntegrationVersionResourcesEndpoint(m.config.StagingDir, integration, version, resourcesJSON)
+	endpoints.GenerateIntegrationVersionLogoEndpoint(m.config.StagingDir, integration, version, logo)
+	endpoints.GenerateIntegrationVersionReadmeEndpoint(m.config.StagingDir, integration, version, readme)
+	endpoints.GenerateIntegrationVersionChangelogEndpoint(m.config.StagingDir, integration, version, changelog)
 	// TODO(jk): add directory for images or extra files
 
 	return nil

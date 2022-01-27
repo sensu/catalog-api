@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path"
 
-	catalogv1 "github.com/sensu/catalog-api/api/catalog/v1"
+	catalogv1 "github.com/sensu/catalog-api/internal/api/catalog/v1"
 )
 
 // GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/resources.json

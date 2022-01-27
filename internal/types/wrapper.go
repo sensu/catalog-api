@@ -1,10 +1,10 @@
-package v1
+package types
 
 import (
 	"fmt"
 
-	catalogv1 "github.com/sensu/catalog-api/api/catalog/v1"
-	metav1 "github.com/sensu/catalog-api/api/metadata/v1"
+	catalogv1 "github.com/sensu/catalog-api/internal/api/catalog/v1"
+	metav1 "github.com/sensu/catalog-api/internal/api/metadata/v1"
 	"gopkg.in/yaml.v3"
 )
 

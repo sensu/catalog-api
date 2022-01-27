@@ -1,11 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
 
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/sensu/catalog-api/internal/commands/generatecmd"
+	"github.com/sensu/catalog-api/internal/commands/rootcmd"
 )
 
 func main() {
@@ -13,32 +16,28 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	// find the working directory which should be the catalog repository that
-	// this tool should be run within
-	workingDir, err := os.Getwd()
+	// create root command
+	rootCmd, rootConfig, err := rootcmd.New()
 	if err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("Failed to determine the working directory")
-	}
-	log.Info().Str("path", workingDir).Msg("Using base directory")
-
-	// create a new catalog manager which is used to determine versions from git
-	// tags, unmarshal resources, and generate the api
-	m, err := newCatalogManager(workingDir)
-	if err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("Failed to create catalog manager")
+		log.Fatal().Err(err).Msg("Failed to initialize root command")
 	}
 
-	// process the catalog & all its integrations
-	releasePath, err := m.ProcessCatalog()
+	// create generate command
+	generatecmd, err := generatecmd.New(rootConfig)
 	if err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("Failed to process integrations")
+		log.Fatal().Err(err).Msg("Failed to initialize generate subcommand")
 	}
 
-	fmt.Printf("::set-output name=release_path::%s\n", releasePath)
+	// add subcommands to root command
+	rootCmd.Subcommands = []*ffcli.Command{
+		generatecmd,
+	}
+
+	if err := rootCmd.Parse(os.Args[1:]); err != nil {
+		log.Fatal().Err(err).Msg("Failed to parse command arguments")
+	}
+
+	if err := rootCmd.Run(context.Background()); err != nil {
+		log.Fatal().Err(err).Msg("Failed execution of command")
+	}
 }

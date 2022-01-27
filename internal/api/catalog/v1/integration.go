@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	metav1 "github.com/sensu/catalog-api/api/metadata/v1"
+	metav1 "github.com/sensu/catalog-api/internal/api/metadata/v1"
 )
 
 type Integration struct {

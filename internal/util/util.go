@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"encoding/base64"
@@ -8,7 +8,7 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
-func calculateDirChecksum(path string, prefix string) (string, error) {
+func CalculateDirChecksum(path string, prefix string) (string, error) {
 	// calculate sha256 checksum, which is returned as a base64 encoded string
 	// prefixed with "h1:"
 	h1, err := dirhash.HashDir(path, prefix, dirhash.Hash1)
