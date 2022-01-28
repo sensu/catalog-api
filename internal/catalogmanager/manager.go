@@ -326,6 +326,10 @@ func (m catalogManager) ProcessCatalog() error {
 		processed[namespace] = vis
 	}
 
+	if err := endpoints.GenerateCatalogEndpoint(m.config.StagingDir, processed); err != nil {
+		return fmt.Errorf("error generating catalog endpoint: %w", err)
+	}
+
 	// calculate the sha256 checksum of the generated api
 	checksum, err := util.CalculateDirChecksum(m.config.StagingDir, "staging")
 	if err != nil {
@@ -339,7 +343,9 @@ func (m catalogManager) ProcessCatalog() error {
 		return fmt.Errorf("error copying staging files to release dir: %w", err)
 	}
 
-	endpoints.GenerateVersionEndpoint(m.config.ReleaseDir, checksum)
+	if err := endpoints.GenerateVersionEndpoint(m.config.ReleaseDir, checksum); err != nil {
+		return fmt.Errorf("error generating version endpoint: %w", err)
+	}
 
 	return nil
 }
@@ -351,7 +357,9 @@ func (m catalogManager) ProcessNamespace(namespace string, vis types.VersionedIn
 	}
 
 	for integration, versions := range processedIntegrations {
-		endpoints.GenerateIntegrationVersionsEndpoint(m.config.StagingDir, namespace, integration, versions)
+		if err := endpoints.GenerateIntegrationVersionsEndpoint(m.config.StagingDir, namespace, integration, versions); err != nil {
+			return fmt.Errorf("error generating integration versions endpoint: %w", err)
+		}
 	}
 
 	return nil
@@ -408,7 +416,9 @@ func (m catalogManager) ProcessIntegration(namespace string, integration string,
 	if err != nil {
 		return err
 	}
-	endpoints.GenerateIntegrationEndpoint(m.config.StagingDir, integrationConfig, versions)
+	if err := endpoints.GenerateIntegrationEndpoint(m.config.StagingDir, integrationConfig, versions); err != nil {
+		return fmt.Errorf("error generating integration endpoint: %w", err)
+	}
 
 	if len(failed) > 0 {
 		return fmt.Errorf("error processing integration versions: %s", failed)
@@ -443,11 +453,21 @@ func (m catalogManager) ProcessIntegrationVersion(version types.IntegrationVersi
 		return err
 	}
 
-	endpoints.GenerateIntegrationVersionEndpoint(m.config.StagingDir, integration, version)
-	endpoints.GenerateIntegrationVersionResourcesEndpoint(m.config.StagingDir, integration, version, resourcesJSON)
-	endpoints.GenerateIntegrationVersionLogoEndpoint(m.config.StagingDir, integration, version, logo)
-	endpoints.GenerateIntegrationVersionReadmeEndpoint(m.config.StagingDir, integration, version, readme)
-	endpoints.GenerateIntegrationVersionChangelogEndpoint(m.config.StagingDir, integration, version, changelog)
+	if err := endpoints.GenerateIntegrationVersionEndpoint(m.config.StagingDir, integration, version); err != nil {
+		return fmt.Errorf("error generating integration version endpoint: %w", err)
+	}
+	if err := endpoints.GenerateIntegrationVersionResourcesEndpoint(m.config.StagingDir, integration, version, resourcesJSON); err != nil {
+		return fmt.Errorf("error generating integration version resources endpoint: %w", err)
+	}
+	if err := endpoints.GenerateIntegrationVersionLogoEndpoint(m.config.StagingDir, integration, version, logo); err != nil {
+		return fmt.Errorf("error generating integration version logo endpoint: %w", err)
+	}
+	if err := endpoints.GenerateIntegrationVersionReadmeEndpoint(m.config.StagingDir, integration, version, readme); err != nil {
+		return fmt.Errorf("error generating integration version readme endpoint: %w", err)
+	}
+	if err := endpoints.GenerateIntegrationVersionChangelogEndpoint(m.config.StagingDir, integration, version, changelog); err != nil {
+		return fmt.Errorf("error generating integration version changelog endpoint: %w", err)
+	}
 	// TODO(jk): add directory for images or extra files
 
 	return nil
