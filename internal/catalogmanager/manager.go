@@ -298,7 +298,7 @@ func (m catalogManager) getMarkdownFile(version types.IntegrationVersion, integr
 		return "", fmt.Errorf("error reading contents of markdown file")
 	}
 
-	// TODO(jk): possibly add markdown validation
+	// TODO(jk): possibly add markdown validation (for validate command only)
 
 	return contents, nil
 }
