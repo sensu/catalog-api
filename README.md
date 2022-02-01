@@ -39,7 +39,7 @@ Returns the list of integration namespaces & names for the catalog.
 
 ```
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>.json`
+### `GET /<release_sha256>/v1/<namespace>/<name>.json`
 
 Returns the integration configuration for the latest version along with a list of
 versions for the requested integration.
@@ -76,7 +76,7 @@ versions for the requested integration.
 }
 ```
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>/versions.json`
+### `GET /<release_sha256>/v1/<namespace>/<name>/versions.json`
 
 Returns the list of available versions for the requested integration.
 
@@ -89,7 +89,7 @@ Returns the list of available versions for the requested integration.
 ]
 ```
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>/<version>.json`
+### `GET /<release_sha256>/v1/<namespace>/<name>/<version>.json`
 
 Returns the integration configuration for the requested version of an integration.
 
@@ -122,7 +122,7 @@ Returns the integration configuration for the requested version of an integratio
 }
 ```
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>/<version>/sensu-resources.json`
+### `GET /<release_sha256>/v1/<namespace>/<name>/<version>/sensu-resources.json`
 
 Returns the Sensu resources, in JSON format, for the requested integration version.
 
@@ -163,14 +163,14 @@ Returns the Sensu resources, in JSON format, for the requested integration versi
 }
 ```
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>/<version>/README.md`
+### `GET /<release_sha256>/v1/<namespace>/<name>/<version>/README.md`
 
 Returns the README, in markdown format, for the requested integration version.
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>/<version>/CHANGELOG.md`
+### `GET /<release_sha256>/v1/<namespace>/<name>/<version>/CHANGELOG.md`
 
 Returns the CHANGELOG, in markdown format, for the requested integration version.
 
-### `GET /<release_sha256>/v1/<integration_namespace>/<integration_name>/<version>/logo.png`
+### `GET /<release_sha256>/v1/<namespace>/<name>/<version>/logo.png`
 
 Returns the logo, in PNG format, for the requested integration version.
