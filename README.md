@@ -7,13 +7,13 @@ Sensu Catalog API generates a static API from a Sensu Catalog repository (e.g. h
 ## API Endpoints
 
 * [`GET /version.json`](#get-versionjson)
-* [`GET /<release_sha256>/v1/catalog.json`](#get-release_sha256-v1-catalogjson)
-* [`GET /<release_sha256>/v1/<namespace>/<name>.json`](#get-release_sha256-v1-namespace-namejson)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/versions.json`](#get-release_sha256-v1-namespace-name-versionsjson)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>.json`](#get-release_sha256-v1-namespace-name-versionjson)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/sensu-resources.json`](#get-release_sha256-v1-namespace-name-version-sensu-resourcesjson)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/README.md`](#get-release_sha256-v1-namespace-name-version-readmemd)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/logo.png`](#get-release_sha256-v1-namespace-name-version-logopng)
+* [`GET /<release_sha256>/v1/catalog.json`](#get-release_sha256v1catalogjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>.json`](#get-release_sha256v1namespacenamejson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/versions.json`](#get-release_sha256v1namespacenameversionsjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>.json`](#get-release_sha256v1namespacenameversionjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/sensu-resources.json`](#get-release_sha256v1namespacenameversionsensu-resourcesjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/README.md`](#get-release_sha256v1namespacenameversionreadmemd)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/logo.png`](#get-release_sha256v1namespacenameversionlogopng)
 
 ### `GET /version.json`
 
