@@ -6,6 +6,15 @@ Sensu Catalog API generates a static API from a Sensu Catalog repository (e.g. h
 
 ## API Endpoints
 
+* [`GET /version.json`](#get-version-json)
+* [`GET /<release_sha256>/v1/catalog.json`](#get-release_sha256-v1-catalog-json)
+* [`GET /<release_sha256>/v1/<namespace>/<name>.json`](#get-release_sha256-v1-namespace-name-json)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/versions.json`](#get-release_sha256-v1-namespace-name-versions-json)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>.json`](#get-release_sha256-v1-namespace-name-version-json)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/sensu-resources.json`](#get-release_sha256-v1-namespace-name-version-sensu-resources-json)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/README.md`](#get-release_sha256-v1-namespace-name-version-readme-md)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/logo.png`](#get-release_sha256-v1-namespace-name-version-logo-png)
+
 ### `GET /version.json`
 
 Returns the latest content version (used by the Sensu web app to determine the latest API subpath).
