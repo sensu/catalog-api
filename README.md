@@ -6,14 +6,14 @@ Sensu Catalog API generates a static API from a Sensu Catalog repository (e.g. h
 
 ## API Endpoints
 
-* [`GET /version.json`](#get-version-json)
-* [`GET /<release_sha256>/v1/catalog.json`](#get-release_sha256-v1-catalog-json)
-* [`GET /<release_sha256>/v1/<namespace>/<name>.json`](#get-release_sha256-v1-namespace-name-json)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/versions.json`](#get-release_sha256-v1-namespace-name-versions-json)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>.json`](#get-release_sha256-v1-namespace-name-version-json)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/sensu-resources.json`](#get-release_sha256-v1-namespace-name-version-sensu-resources-json)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/README.md`](#get-release_sha256-v1-namespace-name-version-readme-md)
-* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/logo.png`](#get-release_sha256-v1-namespace-name-version-logo-png)
+* [`GET /version.json`](#get-versionjson)
+* [`GET /<release_sha256>/v1/catalog.json`](#get-release_sha256-v1-catalogjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>.json`](#get-release_sha256-v1-namespace-namejson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/versions.json`](#get-release_sha256-v1-namespace-name-versionsjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>.json`](#get-release_sha256-v1-namespace-name-versionjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/sensu-resources.json`](#get-release_sha256-v1-namespace-name-version-sensu-resourcesjson)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/README.md`](#get-release_sha256-v1-namespace-name-version-readmemd)
+* [`GET /<release_sha256>/v1/<namespace>/<name>/<version>/logo.png`](#get-release_sha256-v1-namespace-name-version-logopng)
 
 ### `GET /version.json`
 
