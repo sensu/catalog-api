@@ -13,10 +13,10 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 
 	catalogv1 "github.com/sensu/catalog-api/internal/api/catalog/v1"
+	catalogapiv1 "github.com/sensu/catalog-api/internal/api/catalogapi/v1"
 	"github.com/sensu/catalog-api/internal/endpoints"
 	"github.com/sensu/catalog-api/internal/types"
 	"github.com/sensu/catalog-api/internal/util"
@@ -311,10 +311,9 @@ func (m catalogManager) ProcessCatalog() error {
 		return fmt.Errorf("error retrieving list of integrations from git tags: %w", err)
 	}
 
-	processed := types.NamespacedIntegrations{}
-
 	// loop through the list of namespaces & integrations, unmarshal the configs
 	// & resource files, and then generate the static api
+	latestNsIntegrationVersions := map[string][]catalogapiv1.IntegrationVersion{}
 	for namespace, vis := range nsIntegrations {
 		logger := log.With().Str("namespace", namespace).Logger()
 
@@ -323,10 +322,29 @@ func (m catalogManager) ProcessCatalog() error {
 			continue
 		}
 
-		processed[namespace] = vis
+		integrationVersions := []catalogapiv1.IntegrationVersion{}
+		for integration, versions := range vis {
+			// determine the latest version of the integration
+			latestVersion := versions.LatestVersion()
+
+			// retrieve the integration config for the latest integration version
+			integrationPath := path.Join("integrations", namespace, integration)
+			integrationConfig, err := m.getIntegrationConfig(latestVersion, integrationPath)
+			if err != nil {
+				logger.Err(err).Msg("Failed to retrieve integration config")
+				return err
+			}
+
+			integrationVersions = append(integrationVersions, catalogapiv1.IntegrationVersion{
+				Integration: integrationConfig,
+				Version:     latestVersion.SemVer(),
+			})
+		}
+
+		latestNsIntegrationVersions[namespace] = integrationVersions
 	}
 
-	if err := endpoints.GenerateCatalogEndpoint(m.config.StagingDir, processed); err != nil {
+	if err := endpoints.GenerateCatalogEndpoint(m.config.StagingDir, latestNsIntegrationVersions); err != nil {
 		return fmt.Errorf("error generating catalog endpoint: %w", err)
 	}
 
@@ -386,12 +404,11 @@ func (m catalogManager) ProcessIntegrations(namespace string, vis types.Versione
 }
 
 func (m catalogManager) ProcessIntegration(namespace string, integration string, versions []types.IntegrationVersion) error {
-	processed := []types.IntegrationVersion{}
+	processed := types.IntegrationVersionsSlice{}
 	failed := []types.IntegrationVersion{}
-	latestVersion := types.IntegrationVersion{}
 	integrationPath := path.Join("integrations", namespace, integration)
 
-	for i, version := range versions {
+	for _, version := range versions {
 		if err := m.ProcessIntegrationVersion(version, integrationPath); err != nil {
 			log.Err(err).
 				Str("namespace", namespace).
@@ -402,16 +419,9 @@ func (m catalogManager) ProcessIntegration(namespace string, integration string,
 		}
 
 		processed = append(processed, version)
-
-		if i != 0 {
-			if semver.Compare(latestVersion.SemVer(), version.SemVer()) == -1 {
-				latestVersion = version
-			}
-		} else {
-			latestVersion = version
-		}
 	}
 
+	latestVersion := processed.LatestVersion()
 	integrationConfig, err := m.getIntegrationConfig(latestVersion, integrationPath)
 	if err != nil {
 		return err
