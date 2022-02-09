@@ -2,6 +2,8 @@ package types
 
 import (
 	"fmt"
+
+	"golang.org/x/mod/semver"
 )
 
 // IntegrationVersion is a representation of a single integration version
@@ -35,9 +37,27 @@ func (i IntegrationVersion) SemVer() string {
 	return version
 }
 
+type IntegrationVersionsSlice []IntegrationVersion
+
+func (v IntegrationVersionsSlice) LatestVersion() IntegrationVersion {
+	latestVersion := IntegrationVersion{}
+
+	for i, version := range v {
+		if i != 0 {
+			if semver.Compare(latestVersion.SemVer(), version.SemVer()) == -1 {
+				latestVersion = version
+			}
+		} else {
+			latestVersion = version
+		}
+	}
+
+	return latestVersion
+}
+
 // VersionedIntegrations is a mapping of integration names to
 // IntegrationVersions
-type VersionedIntegrations map[string][]IntegrationVersion
+type VersionedIntegrations map[string]IntegrationVersionsSlice
 
 // NamespacedIntegrations is a mapping of namespaces to VersionedIntegrations
 type NamespacedIntegrations map[string]VersionedIntegrations

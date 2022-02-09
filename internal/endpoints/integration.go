@@ -40,14 +40,14 @@ func GenerateIntegrationVersionEndpoint(basePath string, integration catalogv1.I
 	return renderJSON(endpoint)
 }
 
-// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/resources.json
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/sensu-resources.json
 func GenerateIntegrationVersionResourcesEndpoint(basePath string, integration catalogv1.Integration, version types.IntegrationVersion, data string) error {
 	iv := catalogapiv1.IntegrationVersion{
 		Integration: integration,
 		Version:     version.SemVer(),
 	}
 	endpoint := catalogapiv1.NewIntegrationVersionResourcesEndpoint(basePath, iv, data)
-	return renderJSON(endpoint)
+	return renderRaw(endpoint)
 }
 
 // GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/logo.png
