@@ -1,9 +1,11 @@
 package catalogmanager
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"path"
 	"regexp"
@@ -266,9 +268,18 @@ func (m catalogManager) getIntegrationResources(version types.IntegrationVersion
 	// attempt to unmarshal yaml to verify that the yaml is valid
 	// TODO(jk): iterate through & validate each resource against the supported
 	// versions of Sensu that the integration defines
-	resources := map[string]interface{}{}
-	if err := yaml.Unmarshal([]byte(contents), &resources); err != nil {
-		return "", fmt.Errorf("error unmarshaling integration resources: %w", err)
+	resources := []map[string]interface{}{}
+	dec := yaml.NewDecoder(bytes.NewReader([]byte(contents)))
+	for {
+		doc := new(map[string]interface{})
+
+		if err := dec.Decode(&doc); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return "", fmt.Errorf("error parsing sensu-resources.yml: %w", err)
+		}
+		resources = append(resources, *doc)
 	}
 
 	resourcesJSON, err := json.Marshal(resources)
