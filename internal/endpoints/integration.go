@@ -79,3 +79,13 @@ func GenerateIntegrationVersionChangelogEndpoint(basePath string, integration ca
 	endpoint := catalogapiv1.NewIntegrationVersionChangelogEndpoint(basePath, iv, data)
 	return renderRaw(endpoint)
 }
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/img/:image
+func GenerateIntegrationVersionImageEndpoint(basePath string, integration catalogv1.Integration, version types.IntegrationVersion, filename string, data string) error {
+	iv := catalogapiv1.IntegrationVersion{
+		Integration: integration,
+		Version:     version.SemVer(),
+	}
+	endpoint := catalogapiv1.NewIntegrationVersionImageEndpoint(basePath, iv, filename, data)
+	return renderRaw(endpoint)
+}

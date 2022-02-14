@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os/exec"
 	"path"
 	"regexp"
@@ -314,6 +315,16 @@ func (m catalogManager) getMarkdownFile(version types.IntegrationVersion, integr
 	return contents, nil
 }
 
+func (m catalogManager) getRawFile(version types.IntegrationVersion, basePath string, filename string) (string, error) {
+	filePath := path.Join(basePath, filename)
+	contents, err := m.getFileContentsAtGitRef(version.GitRef, filePath)
+	if err != nil {
+		return "", fmt.Errorf("error reading contents of raw file")
+	}
+
+	return contents, nil
+}
+
 func (m catalogManager) ProcessCatalog() error {
 	// get a list of namespaces & the integrations that belong to them from the
 	// list of git tags
@@ -489,7 +500,29 @@ func (m catalogManager) ProcessIntegrationVersion(version types.IntegrationVersi
 	if err := endpoints.GenerateIntegrationVersionChangelogEndpoint(m.config.StagingDir, integration, version, changelog); err != nil {
 		return fmt.Errorf("error generating integration version changelog endpoint: %w", err)
 	}
-	// TODO(jk): add directory for images or extra files
+
+	// iterate through each .jpg file in the img directory and create an
+	// endpoint for it
+	imgPath := path.Join(integrationPath, "img")
+	files, err := ioutil.ReadDir(imgPath)
+	if err != nil {
+		return fmt.Errorf("error reading integration img directory: %w", err)
+	}
+
+	for _, f := range files {
+		if !f.IsDir() {
+			match, _ := regexp.MatchString(`.*\.(jpg|gif|png)$`, f.Name())
+			if match {
+				data, err := m.getRawFile(version, imgPath, f.Name())
+				if err != nil {
+					return err
+				}
+				if err := endpoints.GenerateIntegrationVersionImageEndpoint(m.config.StagingDir, integration, version, f.Name(), data); err != nil {
+					return fmt.Errorf("error generating integration version image endpoint: %w", err)
+				}
+			}
+		}
+	}
 
 	return nil
 }
