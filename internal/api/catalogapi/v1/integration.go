@@ -7,6 +7,31 @@ import (
 	catalogv1 "github.com/sensu/catalog-api/internal/api/catalog/v1"
 )
 
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/img/:image
+type IntegrationVersionImageEndpoint struct {
+	outputPath string
+	data       string
+}
+
+func (e IntegrationVersionImageEndpoint) GetOutputPath() string { return e.outputPath }
+func (e IntegrationVersionImageEndpoint) GetData() interface{}  { return e.data }
+
+func NewIntegrationVersionImageEndpoint(basePath string, iv IntegrationVersion, filename string, data string) IntegrationVersionImageEndpoint {
+	outputPath := path.Join(
+		basePath,
+		apiVersion,
+		iv.Integration.Metadata.Namespace,
+		iv.Integration.Metadata.Name,
+		iv.Version,
+		"img",
+		filename)
+
+	return IntegrationVersionImageEndpoint{
+		outputPath: outputPath,
+		data:       data,
+	}
+}
+
 // GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/resources.json
 type IntegrationVersionResourcesEndpoint struct {
 	outputPath string
