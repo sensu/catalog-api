@@ -44,8 +44,9 @@ func validProviders() []string {
 	return []string{
 		"application",
 		"agent",
-		"agent/monitoring",
+		"agent/check",
 		"agent/discovery",
+		"agent/monitoring",
 		"backend",
 		"backend/alert",
 		"backend/incidents",
