@@ -7,6 +7,24 @@ import (
 	metav1 "github.com/sensu/catalog-api/internal/api/metadata/v1"
 )
 
+type Prompt struct {
+	Type  string                 `json:"type" yaml:"type"`
+	Title string                 `json:"title" yaml:"title"`
+	Name  string                 `json:"name" yaml:"name"`
+	Input map[string]interface{} `json:"input" yaml:"input"`
+}
+
+type ResourcePatch struct {
+	Resource ResourcePatchRef         `json:"resource" yaml:"resource"`
+	Patches  []map[string]interface{} `json:"patches" yaml:"patches"`
+}
+
+type ResourcePatchRef struct {
+	Type       string `json:"type" yaml:"type"`
+	ApiVersion string `json:"api_version" yaml:"api_version"`
+	Name       string `json:"name" yaml:"name"`
+}
+
 type Integration struct {
 	Metadata           metav1.Metadata `json:"metadata" yaml:"metadata"`
 	Class              string          `json:"class" yaml:"class"`
@@ -15,6 +33,8 @@ type Integration struct {
 	ShortDescription   string          `json:"short_description" yaml:"short_description"`
 	SupportedPlatforms []string        `json:"supported_platforms" yaml:"supported_platforms"`
 	Tags               []string        `json:"tags" yaml:"tags"`
+	Prompts            []Prompt        `json:"prompts" yaml:"prompts"`
+	ResourcePatches    []ResourcePatch `json:"resource_patches" yaml:"resource_patches"`
 }
 
 func (i Integration) Validate() error {
