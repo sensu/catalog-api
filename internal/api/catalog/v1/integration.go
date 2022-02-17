@@ -28,7 +28,7 @@ func (i Integration) Validate() error {
 		return fmt.Errorf("class must be one of %s", validClasses())
 	}
 	if !isValidProvider(i.Provider) {
-		return fmt.Errorf("provider must be one of %s", validProviders())
+		return fmt.Errorf("provider must be one of %s, got: %s", validProviders(), i.Provider)
 	}
 	if i.ShortDescription == "" {
 		return errors.New("short_description cannot be empty")
@@ -42,15 +42,22 @@ func (i Integration) Validate() error {
 
 func validProviders() []string {
 	return []string{
-		"agent/check",
+		"application",
+		"agent",
+		"agent/monitoring",
 		"agent/discovery",
+		"backend",
 		"backend/alert",
+		"backend/incidents",
+		"backend/metrics",
+		"backend/events",
 		"backend/deregistration",
-		"backend/event-storage",
-		"backend/incident-management",
-		"backend/metric-storage",
-		"backend/registration",
 		"backend/remediation",
+		"backend/other",
+		"cli",
+		"cli/command",
+		"universal",
+		"universal/runtime",
 	}
 }
 
