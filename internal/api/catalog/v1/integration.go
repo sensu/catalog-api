@@ -42,23 +42,14 @@ func (i Integration) Validate() error {
 
 func validProviders() []string {
 	return []string{
-		"application",
-		"agent",
-		"agent/check",
-		"agent/discovery",
-		"agent/monitoring",
-		"backend",
-		"backend/alert",
-		"backend/incidents",
-		"backend/metrics",
-		"backend/events",
-		"backend/deregistration",
-		"backend/remediation",
-		"backend/other",
-		"cli",
-		"cli/command",
-		"universal",
-		"universal/runtime",
+		"alerts",
+		"deregistration",
+		"discovery",
+		"events",
+		"incidents",
+		"metrics",
+		"monitoring",
+		"remediation",
 	}
 }
 
