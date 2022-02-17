@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os/exec"
 	"path"
@@ -505,8 +506,10 @@ func (m catalogManager) ProcessIntegrationVersion(version types.IntegrationVersi
 	// endpoint for it
 	imgPath := path.Join(integrationPath, "img")
 	files, err := ioutil.ReadDir(imgPath)
-	if err != nil {
-		return fmt.Errorf("error reading integration img directory: %w", err)
+	if _, ok := err.(*fs.PathError); ok {
+		return nil // no images found; skipping
+	} else if err != nil {
+		return fmt.Errorf("error reading integration img directory: %T", err)
 	}
 
 	for _, f := range files {
