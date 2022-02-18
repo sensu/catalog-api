@@ -34,8 +34,8 @@ type Integration struct {
 	ShortDescription   string          `json:"short_description" yaml:"short_description"`
 	SupportedPlatforms []string        `json:"supported_platforms" yaml:"supported_platforms"`
 	Tags               []string        `json:"tags" yaml:"tags"`
-	Prompts            []Prompt        `json:"prompts" yaml:"prompts"`
-	ResourcePatches    []ResourcePatch `json:"resource_patches" yaml:"resource_patches"`
+	Prompts            []Prompt        `json:"prompts,omitempty" yaml:"prompts,omitempty"`
+	ResourcePatches    []ResourcePatch `json:"resource_patches,omitempty" yaml:"resource_patches,omitempty"`
 }
 
 func (i Integration) Validate() error {
