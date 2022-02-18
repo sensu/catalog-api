@@ -81,7 +81,7 @@ func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (types.Integrat
 	groupNames := r.SubexpNames()
 	groupValues := r.FindStringSubmatch(gitTag)
 	if len(groupValues) == 0 {
-		return iv, errors.New("skipping unmatched git tag")
+		return iv, ErrUnmatchedGitTag
 	}
 
 	groups := map[string]string{}
@@ -162,7 +162,11 @@ func (m catalogManager) GetNamespacedIntegrations() (types.NamespacedIntegration
 
 		iv, err := getIntegrationVersionFromGitTag(tagRef)
 		if err != nil {
-			logger.Err(err).Msg("Failed to get integration version from git tag")
+			if errors.Is(err, ErrUnmatchedGitTag) {
+				logger.Warn().Str("reason", err.Error()).Msg("Skipping integration version")
+			} else {
+				logger.Err(err).Msg("Failed to get integration version from git tag")
+			}
 			return nil
 		}
 
@@ -280,6 +284,9 @@ func (m catalogManager) getIntegrationResources(version types.IntegrationVersion
 				break
 			}
 			return "", fmt.Errorf("error parsing sensu-resources.yml: %w", err)
+		}
+		if doc == nil {
+			return "", errors.New("error parsing sensu-resources.yml")
 		}
 		resources = append(resources, *doc)
 	}
@@ -437,7 +444,7 @@ func (m catalogManager) ProcessIntegration(namespace string, integration string,
 				Str("namespace", namespace).
 				Str("integration", integration).
 				Str("version", version.SemVer()).
-				Msg("error processing integration version")
+				Msg("Failed to process integration version")
 			failed = append(failed, version)
 		}
 
