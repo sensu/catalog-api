@@ -32,7 +32,7 @@ func NewIntegrationVersionImageEndpoint(basePath string, iv IntegrationVersion, 
 	}
 }
 
-// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/resources.json
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/sensu-resources.json
 type IntegrationVersionResourcesEndpoint struct {
 	outputPath string
 	data       string
