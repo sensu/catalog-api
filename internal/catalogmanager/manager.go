@@ -473,7 +473,10 @@ func (m catalogManager) ProcessIntegrationVersion(version types.IntegrationVersi
 
 	logo, err := m.getIntegrationLogo(version, integrationPath)
 	if err != nil {
-		return err
+		// integration logo was found but an error occurred when reading it
+		if _, ok := err.(*fs.PathError); !ok {
+			return err
+		}
 	}
 
 	readme, err := m.getMarkdownFile(version, integrationPath, "README.md")
@@ -492,8 +495,10 @@ func (m catalogManager) ProcessIntegrationVersion(version types.IntegrationVersi
 	if err := endpoints.GenerateIntegrationVersionResourcesEndpoint(m.config.StagingDir, integration, version, resourcesJSON); err != nil {
 		return fmt.Errorf("error generating integration version resources endpoint: %w", err)
 	}
-	if err := endpoints.GenerateIntegrationVersionLogoEndpoint(m.config.StagingDir, integration, version, logo); err != nil {
-		return fmt.Errorf("error generating integration version logo endpoint: %w", err)
+	if logo != "" {
+		if err := endpoints.GenerateIntegrationVersionLogoEndpoint(m.config.StagingDir, integration, version, logo); err != nil {
+			return fmt.Errorf("error generating integration version logo endpoint: %w", err)
+		}
 	}
 	if err := endpoints.GenerateIntegrationVersionReadmeEndpoint(m.config.StagingDir, integration, version, readme); err != nil {
 		return fmt.Errorf("error generating integration version readme endpoint: %w", err)
