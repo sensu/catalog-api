@@ -27,6 +27,7 @@ type ResourcePatchRef struct {
 
 type Integration struct {
 	Metadata           metav1.Metadata `json:"metadata" yaml:"metadata"`
+	DisplayName        string          `json:"display_name" yaml:"display_name"`
 	Class              string          `json:"class" yaml:"class"`
 	Contributors       []string        `json:"contributors" yaml:"contributors"`
 	Provider           string          `json:"provider" yaml:"provider"`
@@ -43,6 +44,9 @@ func (i Integration) Validate() error {
 	}
 	if i.Metadata.Name == "" {
 		return errors.New("name cannot be empty")
+	}
+	if i.DisplayName == "" {
+		return errors.New("display_name cannot be empty")
 	}
 	if !isValidClass(i.Class) {
 		return fmt.Errorf("class must be one of %s", validClasses())

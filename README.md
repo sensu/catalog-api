@@ -61,6 +61,7 @@ versions for the requested integration.
     "name": "nginx-monitoring",
     "namespace": "nginx"
   },
+  "display_name": "NGINX Monitoring",
   "class": "community",
   "contributors": [
     "@nixwiz",
