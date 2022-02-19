@@ -2,42 +2,30 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/sensu/catalog-api/internal/commands/generatecmd"
-	"github.com/sensu/catalog-api/internal/commands/rootcmd"
+	"github.com/sensu/catalog-api/internal/commands"
 )
+
+func fatalErr(err error) {
+	fmt.Fprintf(os.Stderr, "error: %s\n", err)
+	os.Exit(1)
+}
 
 func main() {
 	// setup logger
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	// create root command
-	rootCmd, rootConfig, err := rootcmd.New()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize root command")
-	}
-
-	// create generate command
-	generatecmd, err := generatecmd.New(rootConfig)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize generate subcommand")
-	}
-
-	// add subcommands to root command
-	rootCmd.Subcommands = []*ffcli.Command{
-		generatecmd,
-	}
-
+	ctx := context.Background()
+	rootCmd := commands.AddCommands()
 	if err := rootCmd.Parse(os.Args[1:]); err != nil {
-		log.Fatal().Err(err).Msg("Failed to parse command arguments")
+		fatalErr(fmt.Errorf("error parsing command arguments: %s", err))
 	}
-
-	if err := rootCmd.Run(context.Background()); err != nil {
-		log.Fatal().Err(err).Msg("Failed execution of command")
+	if err := rootCmd.Run(ctx); err != nil {
+		fatalErr(err)
 	}
 }

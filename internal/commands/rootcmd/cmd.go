@@ -7,35 +7,59 @@ import (
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/rs/zerolog"
+
+	cmderrors "github.com/sensu/catalog-api/internal/commands/errors"
 )
+
+const DefaultLogLevel = "info"
+
+type ExecFn func(context.Context, []string) error
 
 type Config struct {
 	Logger   zerolog.Logger
 	LogLevel string
 }
 
-func New() (*ffcli.Command, Config, error) {
-	var cfg Config
-
+func New(cfg *Config) *ffcli.Command {
 	fs := flag.NewFlagSet("catalog-api", flag.ExitOnError)
-	if err := cfg.RegisterFlags(fs); err != nil {
-		return nil, cfg, fmt.Errorf("error registering flags: %w", err)
-	}
+	cfg.RegisterFlags(fs)
 
 	return &ffcli.Command{
 		Name:       "catalog-api",
-		ShortUsage: "catalog-api [flags] <subcommand> [flags] [<arg>...]",
+		ShortUsage: "catalog-api <subcommand> [flags]",
 		FlagSet:    fs,
 		Exec:       cfg.Exec,
-	}, cfg, nil
+	}
 }
 
-func (c *Config) RegisterFlags(fs *flag.FlagSet) error {
-	defaultLogLevel := "info"
+func usage() string {
+	cmd := New(&Config{})
 
-	fs.StringVar(&c.LogLevel, "log-level", defaultLogLevel, "log level of this command")
+	usageFn := cmd.UsageFunc
+	if usageFn == nil {
+		usageFn = ffcli.DefaultUsageFunc
+	}
 
-	return nil
+	return usageFn(cmd)
+}
+
+func (c *Config) RegisterFlags(fs *flag.FlagSet) {
+	fs.StringVar(&c.LogLevel, "log-level", DefaultLogLevel, fmt.Sprintf("log level of this command (%v)", validLogLevels()))
+}
+
+func (c *Config) PreExec(fn ExecFn) ExecFn {
+	return func(ctx context.Context, args []string) error {
+		level, err := zerolog.ParseLevel(c.LogLevel)
+		if err != nil {
+			return cmderrors.ErrHelpWithMessage{
+				Message: "invalid log level",
+				ErrHelp: flag.ErrHelp,
+			}
+		}
+		zerolog.SetGlobalLevel(level)
+
+		return fn(ctx, args)
+	}
 }
 
 func (c *Config) Exec(context.Context, []string) error {
@@ -44,6 +68,14 @@ func (c *Config) Exec(context.Context, []string) error {
 	return flag.ErrHelp
 }
 
-// TODO(jk): add parsing for log level & set it
-// level, err := zerolog.ParseLevel(&c.LogLevel)
-// zerolog.SetGlobalLevel(l zerolog.Level)
+func validLogLevels() []string {
+	return []string{
+		"panic",
+		"fatal",
+		"error",
+		"warn",
+		"info",
+		"debug",
+		"trace",
+	}
+}
