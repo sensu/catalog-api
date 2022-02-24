@@ -1,8 +1,12 @@
 package catalogloader
 
-import "github.com/sensu/catalog-api/internal/integrationloader"
+import (
+	"github.com/sensu/catalog-api/internal/integrationloader"
+	"github.com/sensu/catalog-api/internal/types"
+)
 
 type Loader interface {
-	LoadIntegrations() (map[string][]string, error)
-	IntegrationLoader(namespace string, integration string) integrationloader.Loader
+	LoadIntegrations() (types.Integrations, error)
+	NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader
+	IntegrationsPath() string
 }

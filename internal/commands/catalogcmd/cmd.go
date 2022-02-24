@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/sensu/catalog-api/internal/catalogloader"
 	"github.com/sensu/catalog-api/internal/catalogmanager"
 	"github.com/sensu/catalog-api/internal/commands/rootcmd"
 )
@@ -46,6 +47,10 @@ func New(rootConfig rootcmd.Config) *ffcli.Command {
 	}
 }
 
+func (c Config) IntegrationsPath() string {
+	return path.Join(c.repoDir, c.integrationsDirName)
+}
+
 func (c *Config) RegisterFlags(fs *flag.FlagSet) {
 	// register catalog flags
 	c.RegisterCatalogFlags(fs)
@@ -59,7 +64,7 @@ func (c *Config) RegisterCatalogFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.integrationsDirName, "integrations-dir-name", defaultIntegrationsDirName, "path to the directory containing namespaced integrations")
 }
 
-func (c *Config) newCatalogManager() (catalogmanager.CatalogManager, error) {
+func (c *Config) newCatalogManager(loader catalogloader.Loader) (catalogmanager.CatalogManager, error) {
 	var cm catalogmanager.CatalogManager
 
 	// create a temporay directory within c.tempDir to hold the generated api
@@ -83,15 +88,13 @@ func (c *Config) newCatalogManager() (catalogmanager.CatalogManager, error) {
 	}
 
 	mCfg := catalogmanager.Config{
-		RepoDir:             c.repoDir,
-		StagingDir:          stagingDir,
-		ReleaseDir:          releaseDir,
-		IntegrationsDirName: c.integrationsDirName,
+		StagingDir: stagingDir,
+		ReleaseDir: releaseDir,
 	}
 
 	// create a new catalog manager which is used to determine versions from git
 	// tags, unmarshal resources, and generate the api
-	return catalogmanager.New(mCfg)
+	return catalogmanager.New(mCfg, loader)
 }
 
 func (c *Config) Exec(context.Context, []string) error {

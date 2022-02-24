@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/sensu/catalog-api/internal/catalogloader"
 )
 
 func (c *Config) GenerateCommand() *ffcli.Command {
@@ -31,7 +33,14 @@ func (c *Config) RegisterGenerateFlags(fs *flag.FlagSet) {
 }
 
 func (c *Config) execGenerate(ctx context.Context, _ []string) error {
-	cm, err := c.newCatalogManager()
+	repo, err := git.PlainOpen(c.repoDir)
+	if err != nil {
+		return err
+	}
+
+	loader := catalogloader.NewGitLoader(repo, c.IntegrationsPath())
+
+	cm, err := c.newCatalogManager(loader)
 	if err != nil {
 		return err
 	}

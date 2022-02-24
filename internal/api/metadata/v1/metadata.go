@@ -1,4 +1,4 @@
-package v1
+package metadatav1
 
 type Metadata struct {
 	Name      string `json:"name" yaml:"name"`

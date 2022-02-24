@@ -1,74 +1,88 @@
 package integrationloader
 
 import (
-	"fmt"
+	"io/fs"
+	"io/ioutil"
 	"os"
 	"path"
+	"regexp"
 
 	catalogv1 "github.com/sensu/catalog-api/internal/api/catalog/v1"
-	"github.com/sensu/catalog-api/internal/types"
 )
 
 type PathLoader struct {
-	path string
+	integrationPath string
 }
 
-func NewPathLoader(path string) PathLoader {
+func NewPathLoader(integrationPath string) PathLoader {
 	return PathLoader{
-		path: path,
+		integrationPath: integrationPath,
 	}
 }
 
 func (l PathLoader) LoadConfig() (catalogv1.Integration, error) {
-	var integration catalogv1.Integration
-
-	// TODO(jk): support both .yaml & .yml extensions
-	filePath := path.Join(l.path, defaultConfigName)
-	b, err := os.ReadFile(filePath)
-	if err != nil {
-		return integration, fmt.Errorf("error accessing %s: %w", filePath, err)
-	}
-
-	raw, err := types.RawWrapperFromYAMLBytes(b)
-	if err != nil {
-		return integration, err
-	}
-
-	wrap, err := types.WrapperFromRawWrapper(raw)
-	if err != nil {
-		return integration, err
-	}
-	integration = wrap.Value.(catalogv1.Integration)
-
-	return integration, nil
+	return loadConfig(l)
 }
 
 func (l PathLoader) LoadChangelog() (string, error) {
-	// TODO(jk): support both .yaml & .yml extensions
-	return l.getFileContentsAsString(defaultChangelogName)
+	return loadChangelog(l)
 }
 
 func (l PathLoader) LoadImages() (Images, error) {
-	return Images{}, nil
+	images := Images{}
+	imagesPath := path.Join(l.integrationPath, defaultImagesDirName)
+
+	files, err := ioutil.ReadDir(imagesPath)
+	if _, ok := err.(*fs.PathError); ok {
+		// no images found; skipping
+		return images, nil
+	} else if err != nil {
+		return images, err
+	}
+
+	for _, f := range files {
+		relativePath := path.Join(defaultImagesDirName, f.Name())
+
+		if !f.IsDir() {
+			match, _ := regexp.MatchString(reImageExtensions, f.Name())
+			if match {
+				data, err := l.GetFileContentsAsString(relativePath)
+				if err != nil {
+					return images, err
+				}
+				images[f.Name()] = data
+			}
+		}
+	}
+
+	return images, nil
 }
 
 func (l PathLoader) LoadLogo() (string, error) {
-	return l.getFileContentsAsString(defaultLogoName)
+	return loadLogo(l)
 }
 
 func (l PathLoader) LoadReadme() (string, error) {
-	return l.getFileContentsAsString(defaultReadmeName)
+	return loadReadme(l)
 }
 
 func (l PathLoader) LoadResources() (string, error) {
-	return l.getFileContentsAsString(defaultResourcesName)
+	return loadResources(l)
 }
 
-func (l PathLoader) getFileContentsAsString(relativePath string) (string, error) {
-	filePath := path.Join(l.path, relativePath)
+func (l PathLoader) GetFileContentsAsBytes(relativePath string) ([]byte, error) {
+	filePath := path.Join(l.integrationPath, relativePath)
 	b, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", fmt.Errorf("error accessing %s: %w", filePath, err)
+		return nil, err
+	}
+	return b, nil
+}
+
+func (l PathLoader) GetFileContentsAsString(relativePath string) (string, error) {
+	b, err := l.GetFileContentsAsBytes(relativePath)
+	if err != nil {
+		return "", err
 	}
 	return string(b), nil
 }

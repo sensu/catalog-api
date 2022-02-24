@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/sensu/catalog-api/internal/catalogloader"
 )
 
 func (c *Config) ValidateCommand() *ffcli.Command {
@@ -24,13 +25,15 @@ func (c *Config) ValidateCommand() *ffcli.Command {
 }
 
 func (c *Config) execValidate(context.Context, []string) error {
-	cm, err := c.newCatalogManager()
+	loader := catalogloader.NewPathLoader(c.repoDir, c.IntegrationsPath())
+
+	cm, err := c.newCatalogManager(loader)
 	if err != nil {
 		return err
 	}
 
 	// validate the catalog & all its integrations
-	if err := cm.ValidateCatalogDir(); err != nil {
+	if err := cm.ValidateCatalog(); err != nil {
 		return fmt.Errorf("error validating catalog: %w", err)
 	}
 
