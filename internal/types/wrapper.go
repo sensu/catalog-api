@@ -48,9 +48,6 @@ func WrapperFromRawWrapper(raw RawWrapper) (Wrapper, error) {
 		if err := raw.Value.Decode(&integration); err != nil {
 			return wrap, fmt.Errorf("failed to decode raw value %s: %w", wrap.TypeVersion(), err)
 		}
-		if err := integration.Validate(); err != nil {
-			return wrap, fmt.Errorf("failed to validate %s: %w", wrap.TypeVersion(), err)
-		}
 		wrap.Value = integration
 		return wrap, nil
 	default:

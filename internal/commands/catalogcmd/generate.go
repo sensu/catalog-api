@@ -11,6 +11,9 @@ import (
 func (c *Config) GenerateCommand() *ffcli.Command {
 	fs := flag.NewFlagSet("catalog-api catalog generate", flag.ExitOnError)
 
+	// register catalog generate flags
+	c.RegisterGenerateFlags(fs)
+
 	// register catalog & global flags
 	c.RegisterFlags(fs)
 
@@ -21,6 +24,10 @@ func (c *Config) GenerateCommand() *ffcli.Command {
 		FlagSet:    fs,
 		Exec:       c.rootConfig.PreExec(c.execGenerate),
 	}
+}
+
+func (c *Config) RegisterGenerateFlags(fs *flag.FlagSet) {
+	fs.StringVar(&c.tempDir, "temp-dir", defaultTempDir, "path to a temporary directory for generated files")
 }
 
 func (c *Config) execGenerate(ctx context.Context, _ []string) error {

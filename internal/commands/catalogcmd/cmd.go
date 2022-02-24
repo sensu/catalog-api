@@ -12,11 +12,17 @@ import (
 	"github.com/sensu/catalog-api/internal/commands/rootcmd"
 )
 
+var (
+	defaultIntegrationsDirName = "integrations"
+	defaultRepoDir             = "."
+	defaultTempDir             = os.TempDir()
+)
+
 type Config struct {
-	rootConfig      rootcmd.Config
-	repoDir         string
-	tempDir         string
-	integrationsDir string
+	rootConfig          rootcmd.Config
+	repoDir             string
+	tempDir             string
+	integrationsDirName string
 }
 
 func New(rootConfig rootcmd.Config) *ffcli.Command {
@@ -40,32 +46,17 @@ func New(rootConfig rootcmd.Config) *ffcli.Command {
 	}
 }
 
-func (c *Config) RegisterFlags(fs *flag.FlagSet) error {
+func (c *Config) RegisterFlags(fs *flag.FlagSet) {
 	// register catalog flags
-	if err := c.RegisterCatalogFlags(fs); err != nil {
-		return fmt.Errorf("error registering catalog flags: %w", err)
-	}
+	c.RegisterCatalogFlags(fs)
 
 	// register global flags
 	c.rootConfig.RegisterFlags(fs)
-
-	return nil
 }
 
-func (c *Config) RegisterCatalogFlags(fs *flag.FlagSet) error {
-	defaultRepoDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error retrieving current working directory: %w", err)
-	}
-
-	defaultTempDir := os.TempDir()
-	defaultIntegrationsDir := "integrations"
-
+func (c *Config) RegisterCatalogFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.repoDir, "repo-dir", defaultRepoDir, "path to the catalog repository")
-	fs.StringVar(&c.tempDir, "temp-dir", defaultTempDir, "path to a temporary directory for generated files")
-	fs.StringVar(&c.integrationsDir, "integrations-dir", defaultIntegrationsDir, "path to the directory containing namespaced integrations")
-
-	return nil
+	fs.StringVar(&c.integrationsDirName, "integrations-dir-name", defaultIntegrationsDirName, "path to the directory containing namespaced integrations")
 }
 
 func (c *Config) newCatalogManager() (catalogmanager.CatalogManager, error) {
@@ -92,10 +83,10 @@ func (c *Config) newCatalogManager() (catalogmanager.CatalogManager, error) {
 	}
 
 	mCfg := catalogmanager.Config{
-		RepoDir:         c.repoDir,
-		StagingDir:      stagingDir,
-		ReleaseDir:      releaseDir,
-		IntegrationsDir: c.integrationsDir,
+		RepoDir:             c.repoDir,
+		StagingDir:          stagingDir,
+		ReleaseDir:          releaseDir,
+		IntegrationsDirName: c.integrationsDirName,
 	}
 
 	// create a new catalog manager which is used to determine versions from git

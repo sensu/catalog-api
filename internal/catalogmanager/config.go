@@ -3,10 +3,10 @@ package catalogmanager
 import "errors"
 
 type Config struct {
-	RepoDir         string
-	StagingDir      string
-	ReleaseDir      string
-	IntegrationsDir string
+	RepoDir             string
+	StagingDir          string
+	ReleaseDir          string
+	IntegrationsDirName string
 }
 
 func (c Config) validate() error {

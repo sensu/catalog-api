@@ -17,7 +17,7 @@ func (c *Config) ValidateCommand() *ffcli.Command {
 	return &ffcli.Command{
 		Name:       "validate",
 		ShortUsage: "catalog-api catalog validate [flags]",
-		ShortHelp:  "Validate a catalog and its integrations",
+		ShortHelp:  "Validate a catalog directory and its integrations",
 		FlagSet:    fs,
 		Exec:       c.rootConfig.PreExec(c.execValidate),
 	}
@@ -30,7 +30,7 @@ func (c *Config) execValidate(context.Context, []string) error {
 	}
 
 	// validate the catalog & all its integrations
-	if err := cm.ValidateCatalog(); err != nil {
+	if err := cm.ValidateCatalogDir(); err != nil {
 		return fmt.Errorf("error validating catalog: %w", err)
 	}
 
