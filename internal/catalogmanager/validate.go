@@ -3,40 +3,18 @@ package catalogmanager
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"path"
 
 	"github.com/rs/zerolog/log"
+	"github.com/sensu/catalog-api/internal/catalogloader"
+	"github.com/sensu/catalog-api/internal/integrationloader"
 )
 
 func (m CatalogManager) ValidateCatalogDir() error {
-	integrationsDir := path.Join(m.config.RepoDir, m.config.IntegrationsDirName)
-
-	// get a list of namespaces & the integrations that belong to them from the
-	// directory structure
-	files, err := ioutil.ReadDir(m.IntegrationsDir())
+	catalogLoader := catalogloader.NewPathLoader(m.IntegrationsDir())
+	nsIntegrations, err := catalogLoader.LoadIntegrations()
 	if err != nil {
-		return fmt.Errorf("error retrieving integrations directory listing: %w", err)
-	}
-
-	nsIntegrations := map[string][]string{}
-	for _, file := range files {
-		if file.IsDir() {
-			namespace := file.Name()
-			namespaceDir := path.Join(integrationsDir, namespace)
-
-			namespaceFiles, err := ioutil.ReadDir(namespaceDir)
-			if err != nil {
-				return fmt.Errorf("error retrieving integrations directory listing: %w", err)
-			}
-
-			for _, namespaceFile := range namespaceFiles {
-				if namespaceFile.IsDir() {
-					integration := namespaceFile.Name()
-					nsIntegrations[namespace] = append(nsIntegrations[namespace], integration)
-				}
-			}
-		}
+		return fmt.Errorf("error loading integrations from catalog: %w", err)
 	}
 
 	// loop through the list of namespaces & integrations, and unmarshal the
@@ -44,18 +22,18 @@ func (m CatalogManager) ValidateCatalogDir() error {
 	validationFailed := false
 	for namespace, integrations := range nsIntegrations {
 		for _, integration := range integrations {
-			integrationPath := path.Join(m.config.IntegrationsDirName, namespace, integration)
-			loader := NewIntegrationPathLoader(integrationPath)
+			integrationPath := path.Join(m.IntegrationsDir(), namespace, integration)
+			integrationLoader := integrationloader.NewPathLoader(integrationPath)
 
 			logger := log.With().
 				Str("namespace", namespace).
 				Str("integration", integration).
 				Logger()
 
-			// retrieve & validate the integration config
-			integrationConfig, err := loader.LoadConfig()
+			// load & validate the integration config
+			integrationConfig, err := integrationLoader.LoadConfig()
 			if err != nil {
-				logger.Err(err).Msg("Failed to retrieve integration config")
+				logger.Err(err).Msg("Failed to load integration config")
 				validationFailed = true
 				continue
 			}
@@ -65,17 +43,35 @@ func (m CatalogManager) ValidateCatalogDir() error {
 				continue
 			}
 
-			// retrieve & validate sensu resources
-			if _, err = m.getIntegrationResourcesFromPath(integrationPath); err != nil {
-				logger.Err(err).Msg("Failed to retrieve resources file")
+			// load & validate sensu resources
+			if _, err = integrationLoader.LoadResources(); err != nil {
+				logger.Err(err).Msg("Failed to load resources file")
 			}
 			// TODO(jk): call resouces.Validate() once it's implemented
 
-			// retrieve & validate logo
+			// load & validate logo
+			_, err = integrationLoader.LoadLogo()
+			if err != nil {
+				logger.Err(err).Msg("Failed to load logo")
+			}
 
-			// retrieve & validate readme
-			// retrieve & validate changelog
-			// retrieve & validate images
+			// load & validate readme
+			_, err = integrationLoader.LoadReadme()
+			if err != nil {
+				logger.Err(err).Msg("Failed to load readme")
+			}
+
+			// load & validate changelog
+			_, err = integrationLoader.LoadReadme()
+			if err != nil {
+				logger.Err(err).Msg("Failed to load changelog")
+			}
+
+			// load & validate images
+			_, err = integrationLoader.LoadImages()
+			if err != nil {
+				logger.Err(err).Msg("Failed to load images")
+			}
 		}
 	}
 
