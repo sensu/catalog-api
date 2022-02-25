@@ -1,4 +1,4 @@
-package v1
+package catalogv1
 
 import (
 	"errors"

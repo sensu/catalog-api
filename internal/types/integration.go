@@ -37,13 +37,13 @@ func (i IntegrationVersion) SemVer() string {
 	return version
 }
 
-type IntegrationVersionsSlice []IntegrationVersion
+type Integrations []IntegrationVersion
 
-func (v IntegrationVersionsSlice) LatestVersion() IntegrationVersion {
+func (i Integrations) LatestVersion() IntegrationVersion {
 	latestVersion := IntegrationVersion{}
 
-	for i, version := range v {
-		if i != 0 {
+	for j, version := range i {
+		if j != 0 {
 			if semver.Compare(latestVersion.SemVer(), version.SemVer()) == -1 {
 				latestVersion = version
 			}
@@ -55,9 +55,52 @@ func (v IntegrationVersionsSlice) LatestVersion() IntegrationVersion {
 	return latestVersion
 }
 
-// VersionedIntegrations is a mapping of integration names to
-// IntegrationVersions
-type VersionedIntegrations map[string]IntegrationVersionsSlice
+func (i Integrations) ByNamespace() NamespacedIntegrations {
+	integrations := NamespacedIntegrations{}
+	for _, integrationVersion := range i {
+		namespace := integrationVersion.Namespace
+		integrations[namespace] = append(integrations[namespace], integrationVersion)
+	}
+	return integrations
+}
 
-// NamespacedIntegrations is a mapping of namespaces to VersionedIntegrations
-type NamespacedIntegrations map[string]VersionedIntegrations
+func (i Integrations) ByName() IntegrationVersions {
+	integrations := IntegrationVersions{}
+	for _, integrationVersion := range i {
+		name := integrationVersion.Name
+		integrations[name] = append(integrations[name], integrationVersion)
+	}
+	return integrations
+}
+
+func (i Integrations) FilterByNamespace(namespace string) Integrations {
+	integrations := Integrations{}
+	for _, integrationVersion := range i {
+		if integrationVersion.Namespace == namespace {
+			integrations = append(integrations, integrationVersion)
+		}
+	}
+	return integrations
+}
+
+func (i Integrations) Versions() []string {
+	versions := []string{}
+	for _, integrationVersion := range i {
+		versions = append(versions, integrationVersion.SemVer())
+	}
+	return versions
+}
+
+// NamespacedIntegrations is a mapping of namespaces to Integrations
+type NamespacedIntegrations map[string]Integrations
+
+func (n NamespacedIntegrations) FilterByLatestVersions() NamespacedIntegrations {
+	nsIntegrations := NamespacedIntegrations{}
+	for namespace, integrations := range n {
+		nsIntegrations[namespace] = append(nsIntegrations[namespace], integrations.LatestVersion())
+	}
+	return nsIntegrations
+}
+
+// IntegrationVersions is a mapping of integration names to Integrations
+type IntegrationVersions map[string]Integrations
