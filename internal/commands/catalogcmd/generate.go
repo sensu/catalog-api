@@ -38,7 +38,7 @@ func (c *Config) execGenerate(ctx context.Context, _ []string) error {
 		return err
 	}
 
-	loader := catalogloader.NewGitLoader(repo, c.IntegrationsPath())
+	loader := catalogloader.NewGitLoader(repo, c.integrationsDirName)
 
 	cm, err := c.newCatalogManager(loader)
 	if err != nil {

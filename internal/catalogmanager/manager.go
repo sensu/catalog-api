@@ -126,7 +126,6 @@ func (m CatalogManager) ProcessIntegrationVersions(namespace string, integration
 		}
 	}
 
-	fmt.Printf("Generating integration versions endpoint, namespace: %s, integration: %s\n", namespace, integrationName)
 	if err := endpoints.GenerateIntegrationVersionsEndpoint(m.config.StagingDir, namespace, integrationName, integrations); err != nil {
 		return fmt.Errorf("error generating integration versions endpoint: %w", err)
 	}
@@ -149,8 +148,6 @@ func (m CatalogManager) ProcessIntegrationVersions(namespace string, integration
 
 func (m CatalogManager) ProcessIntegrationVersion(version types.IntegrationVersion) error {
 	integrationLoader := m.loader.NewIntegrationLoader(version.Namespace, version.Name, version.SemVer())
-
-	fmt.Printf("namespace: %s, name: %s, version: %s\n", version.Namespace, version.Name, version.SemVer())
 
 	config, err := integrationLoader.LoadConfig()
 	if err != nil {

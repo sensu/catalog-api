@@ -47,10 +47,6 @@ func New(rootConfig rootcmd.Config) *ffcli.Command {
 	}
 }
 
-func (c Config) IntegrationsPath() string {
-	return path.Join(c.repoDir, c.integrationsDirName)
-}
-
 func (c *Config) RegisterFlags(fs *flag.FlagSet) {
 	// register catalog flags
 	c.RegisterCatalogFlags(fs)

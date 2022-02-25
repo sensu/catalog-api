@@ -8,5 +8,4 @@ import (
 type Loader interface {
 	LoadIntegrations() (types.Integrations, error)
 	NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader
-	IntegrationsPath() string
 }
