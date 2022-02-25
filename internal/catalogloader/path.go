@@ -10,23 +10,23 @@ import (
 )
 
 type PathLoader struct {
-	repoPath         string
-	integrationsPath string
+	repoPath            string
+	integrationsDirName string
 }
 
-func NewPathLoader(repoPath string, integrationsPath string) PathLoader {
+func NewPathLoader(repoPath string, integrationsDirName string) PathLoader {
 	return PathLoader{
-		repoPath:         repoPath,
-		integrationsPath: integrationsPath,
+		repoPath:            repoPath,
+		integrationsDirName: integrationsDirName,
 	}
 }
 
-func (l PathLoader) IntegrationsPath() string {
-	return l.integrationsPath
+func (l PathLoader) IntegrationsAbsPath() string {
+	return path.Join(l.repoPath, l.integrationsDirName)
 }
 
 func (l PathLoader) NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader {
-	integrationPath := path.Join(l.IntegrationsPath(), namespace, integration)
+	integrationPath := path.Join(l.IntegrationsAbsPath(), namespace, integration)
 	return integrationloader.NewPathLoader(integrationPath)
 }
 
@@ -35,7 +35,7 @@ func (l PathLoader) LoadIntegrations() (types.Integrations, error) {
 
 	// get a list of namespaces & the integrations that belong to them from the
 	// directory structure
-	files, err := ioutil.ReadDir(l.IntegrationsPath())
+	files, err := ioutil.ReadDir(l.IntegrationsAbsPath())
 	if err != nil {
 		return integrations, fmt.Errorf("error retrieving integrations directory listing: %w", err)
 	}
@@ -43,7 +43,7 @@ func (l PathLoader) LoadIntegrations() (types.Integrations, error) {
 	for _, file := range files {
 		if file.IsDir() {
 			namespace := file.Name()
-			namespaceDir := path.Join(l.IntegrationsPath(), namespace)
+			namespaceDir := path.Join(l.IntegrationsAbsPath(), namespace)
 
 			namespaceFiles, err := ioutil.ReadDir(namespaceDir)
 			if err != nil {

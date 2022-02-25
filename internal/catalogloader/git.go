@@ -19,24 +19,20 @@ const semverRegex = `(?P<Major>0|[1-9]\d*)\.(?P<Minor>0|[1-9]\d*)\.(?P<Patch>0|[
 var ErrUnmatchedGitTag = errors.New("unmatched git tag")
 
 type GitLoader struct {
-	repo             *git.Repository
-	integrationsPath string
+	repo                *git.Repository
+	integrationsDirName string
 }
 
-func NewGitLoader(repo *git.Repository, integrationsPath string) GitLoader {
+func NewGitLoader(repo *git.Repository, integrationsDirName string) GitLoader {
 	return GitLoader{
-		repo:             repo,
-		integrationsPath: integrationsPath,
+		repo:                repo,
+		integrationsDirName: integrationsDirName,
 	}
-}
-
-func (l GitLoader) IntegrationsPath() string {
-	return l.integrationsPath
 }
 
 func (l GitLoader) NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader {
 	tagName := fmt.Sprintf("%s/%s/%s", namespace, integration, version)
-	integrationPath := path.Join(l.IntegrationsPath(), namespace, integration)
+	integrationPath := path.Join(l.integrationsDirName, namespace, integration)
 	return integrationloader.NewGitLoader(l.repo, tagName, integrationPath)
 }
 
