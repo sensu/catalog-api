@@ -7,40 +7,8 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/sensu/catalog-api/internal/integrationloader"
 	"github.com/sensu/catalog-api/internal/types"
 )
-
-func TestGitLoader_NewIntegrationLoader(t *testing.T) {
-	type fields struct {
-		repo                *git.Repository
-		integrationsDirName string
-	}
-	type args struct {
-		namespace   string
-		integration string
-		version     string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   integrationloader.Loader
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := GitLoader{
-				repo:                tt.fields.repo,
-				integrationsDirName: tt.fields.integrationsDirName,
-			}
-			if got := l.NewIntegrationLoader(tt.args.namespace, tt.args.integration, tt.args.version); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GitLoader.NewIntegrationLoader() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestGitLoader_LoadIntegrations(t *testing.T) {
 	type fields struct {
