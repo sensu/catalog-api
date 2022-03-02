@@ -39,6 +39,17 @@ type Integration struct {
 	ResourcePatches    []ResourcePatch `json:"resource_patches,omitempty" yaml:"resource_patches,omitempty"`
 }
 
+func FixtureIntegration() Integration {
+	return Integration{
+		Metadata:         metav1.FixtureMetadata("foo", "bar"),
+		DisplayName:      "Bar",
+		Class:            "community",
+		Provider:         "alerts",
+		ShortDescription: "lorem ipsum",
+		Contributors:     []string{"@sensu"},
+	}
+}
+
 func (i Integration) Validate() error {
 	if i.Metadata.Namespace == "" {
 		return errors.New("namespace cannot be empty")

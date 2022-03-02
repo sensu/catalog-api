@@ -19,6 +19,20 @@ type IntegrationVersion struct {
 	GitRef        string
 }
 
+func FixtureIntegrationVersion(namespace, name string, major, minor, patch int) IntegrationVersion {
+	return IntegrationVersion{
+		Name:          name,
+		Namespace:     namespace,
+		Major:         major,
+		Minor:         minor,
+		Patch:         patch,
+		Prerelease:    "",
+		BuildMetadata: "",
+		GitTag:        fmt.Sprintf("%s/%s/%d.%d.%d", namespace, name, major, minor, patch),
+		GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
+	}
+}
+
 func (i IntegrationVersion) String() string {
 	return fmt.Sprintf("%s/%s:%s", i.Namespace, i.Name, i.SemVer())
 }

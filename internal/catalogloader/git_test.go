@@ -77,28 +77,8 @@ func TestGitLoader_LoadIntegrations(t *testing.T) {
 			},
 			want: func() types.Integrations {
 				integrations := types.Integrations{
-					types.IntegrationVersion{
-						Name:          "example",
-						Namespace:     "example_ns",
-						Major:         1,
-						Minor:         2,
-						Patch:         3,
-						Prerelease:    "",
-						BuildMetadata: "",
-						GitTag:        "example_ns/example/1.2.3",
-						GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
-					},
-					types.IntegrationVersion{
-						Name:          "example",
-						Namespace:     "example_ns",
-						Major:         1,
-						Minor:         3,
-						Patch:         0,
-						Prerelease:    "",
-						BuildMetadata: "",
-						GitTag:        "example_ns/example/1.3.0",
-						GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
-					},
+					types.FixtureIntegrationVersion("example_ns", "example", 1, 2, 3),
+					types.FixtureIntegrationVersion("example_ns", "example", 1, 3, 0),
 				}
 				return integrations
 			}(),
@@ -126,17 +106,7 @@ func TestGitLoader_LoadIntegrations(t *testing.T) {
 			},
 			want: func() types.Integrations {
 				integrations := types.Integrations{
-					types.IntegrationVersion{
-						Name:          "example",
-						Namespace:     "example_ns",
-						Major:         1,
-						Minor:         2,
-						Patch:         3,
-						Prerelease:    "",
-						BuildMetadata: "",
-						GitTag:        "example_ns/example/1.2.3",
-						GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
-					},
+					types.FixtureIntegrationVersion("example_ns", "example", 1, 2, 3),
 				}
 				return integrations
 			}(),
@@ -204,17 +174,7 @@ func Test_getIntegrationVersionFromGitTag(t *testing.T) {
 					return ref
 				}(),
 			},
-			want: types.IntegrationVersion{
-				Name:          "example",
-				Namespace:     "example_ns",
-				Major:         1,
-				Minor:         2,
-				Patch:         3,
-				Prerelease:    "",
-				BuildMetadata: "",
-				GitTag:        "example_ns/example/1.2.3",
-				GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
-			},
+			want:    types.FixtureIntegrationVersion("example_ns", "example", 1, 2, 3),
 			wantErr: false,
 		},
 	}
