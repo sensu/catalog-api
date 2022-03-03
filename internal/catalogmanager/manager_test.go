@@ -83,12 +83,12 @@ func TestVersionEndpoint(t *testing.T) {
 	}
 
 	endpoint := path.Join(m.config.ReleaseDir, "version.json")
-	versionBytes, err := ioutil.ReadFile(endpoint)
+	b, err := ioutil.ReadFile(endpoint)
 	if err != nil {
-		t.Fatalf("TestVersionEndpoint() error reading version.json: %v", err)
+		t.Fatalf("TestVersionEndpoint() error reading %s: %v", endpoint, err)
 	}
 	version := catalogapiv1.ReleaseVersion{}
-	if err := json.Unmarshal(versionBytes, &version); err != nil {
+	if err := json.Unmarshal(b, &version); err != nil {
 		t.Fatalf("TestVersionEndpoint() error marshalling version.json: %v", err)
 	}
 	if version.ReleaseSHA256 != checksum {
@@ -143,12 +143,12 @@ func TestCatalogEndpoint(t *testing.T) {
 	}
 
 	endpoint := path.Join(m.config.ReleaseDir, checksum, "v1", "catalog.json")
-	catalogBytes, err := ioutil.ReadFile(endpoint)
+	b, err := ioutil.ReadFile(endpoint)
 	if err != nil {
-		t.Fatalf("TestCatalogEndpoint() error reading catalog.json: %v", err)
+		t.Fatalf("TestCatalogEndpoint() error reading %s: %v", endpoint, err)
 	}
 	catalog := catalogapiv1.Catalog{}
-	if err := json.Unmarshal(catalogBytes, &catalog); err != nil {
+	if err := json.Unmarshal(b, &catalog); err != nil {
 		t.Fatalf("TestCatalogEndpoint() error marshalling catalog.json: %v", err)
 	}
 	if catalog.NamespacedIntegrations == nil {
@@ -261,6 +261,163 @@ func TestCatalogEndpoint(t *testing.T) {
 					cIntegration.Version, tt.version)
 			}
 		})
+	}
+}
+
+// endpoint: /:release_sha256/v1/:namespace/:integration.json
+func TestIntegrationEndpoint(t *testing.T) {
+	integrations := types.Integrations{
+		types.FixtureIntegrationVersion("foo", "bar", 0, 1, 0),
+		types.FixtureIntegrationVersion("example_ns", "example", 1, 2, 3),
+		types.FixtureIntegrationVersion("example_ns", "example", 1, 3, 0),
+		types.FixtureIntegrationVersion("example_ns", "other", 4, 5, 9),
+	}
+
+	cl := mockcatalogloader.Loader{}
+	cl.On("LoadIntegrations").Return(integrations, nil)
+
+	for _, integration := range integrations {
+		config := catalogv1.FixtureIntegration(integration.Namespace, integration.Name)
+
+		il := mockintegrationloader.Loader{}
+		il.On("LoadConfig").Return(config, nil)
+		il.On("LoadResources").Return("", nil)
+		il.On("LoadLogo").Return("", nil)
+		il.On("LoadReadme").Return("", nil)
+		il.On("LoadChangelog").Return("", nil)
+		il.On("LoadImages").Return(integrationloader.Images{}, nil)
+
+		cl.On(
+			"NewIntegrationLoader",
+			integration.Namespace,
+			integration.Name,
+			integration.SemVer(),
+		).Return(&il)
+	}
+
+	m := newCatalogManager(t)
+	m.loader = &cl
+
+	if err := m.ProcessCatalog(); err != nil {
+		t.Fatalf("TestCatalogEndpoint() error = %v", err)
+	}
+
+	checksum, err := m.config.StagingChecksum()
+	if err != nil {
+		t.Fatalf("TestCatalogEndpoint() error = %v", err)
+	}
+
+	endpoint := path.Join(m.config.ReleaseDir, checksum, "v1", "example_ns", "example.json")
+	b, err := ioutil.ReadFile(endpoint)
+	if err != nil {
+		t.Fatalf("TestCatalogEndpoint() error reading %s: %v", endpoint, err)
+	}
+	integration := catalogapiv1.IntegrationWithVersions{}
+	if err := json.Unmarshal(b, &integration); err != nil {
+		t.Fatalf("TestCatalogEndpoint() error marshalling catalog.json: %v", err)
+	}
+
+	// Class
+	wantClass := "community"
+	if integration.Class != wantClass {
+		t.Errorf("TestCatalogEndpoint() class mismatch: got = %v, want %v",
+			integration.Class, wantClass)
+	}
+	// Contributors
+	wantContributors := []string{"@artem", "@olha"}
+	if !reflect.DeepEqual(integration.Contributors, wantContributors) {
+		t.Errorf("TestCatalogEndpoint() contributors mismatch: got = %v, want %v",
+			integration.Contributors, wantContributors)
+	}
+	// DisplayName
+	wantDisplayName := strings.Title("Example")
+	if integration.DisplayName != wantDisplayName {
+		t.Errorf("TestCatalogEndpoint() display name mismatch: got = %v, want %v",
+			integration.DisplayName, wantDisplayName)
+	}
+	// Metadata Namespace
+	wantNamespace := "example_ns"
+	if integration.Metadata.Namespace != wantNamespace {
+		t.Errorf("TestCatalogEndpoint() metadata namespace mismatch: got = %v, want %v",
+			integration.Metadata.Namespace, wantNamespace)
+	}
+	// Metadata Name
+	wantName := "example"
+	if integration.Metadata.Name != wantName {
+		t.Errorf("TestCatalogEndpoint() metadata name mismatch: got = %v, want %v",
+			integration.Metadata.Name, wantName)
+	}
+	// Prompts
+	wantPrompts := []catalogv1.Prompt{
+		{
+			Type:  "section",
+			Title: "Example Section",
+		},
+		{
+			Type: "question",
+			Name: "employer",
+			Input: map[string]interface{}{
+				"type":        "string",
+				"title":       "Who does Number Two work for?",
+				"description": "Provide the name of the person",
+				"default":     "Dr. Evil",
+			},
+		},
+	}
+	if !reflect.DeepEqual(integration.Prompts, wantPrompts) {
+		t.Errorf("TestCatalogEndpoint() prompts mismatch: got = %v, want %v",
+			integration.Prompts, wantPrompts)
+	}
+	// Provider
+	wantProvider := "alerts"
+	if integration.Provider != wantProvider {
+		t.Errorf("TestCatalogEndpoint() provider mismatch: got = %v, want %v",
+			integration.Provider, wantProvider)
+	}
+	// ResourcePatches
+	wantResourcePatches := []catalogv1.ResourcePatch{
+		{
+			Resource: catalogv1.ResourcePatchRef{
+				Type:       "Handler",
+				ApiVersion: "core/v2",
+				Name:       "foo_handler",
+			},
+			Patches: []map[string]interface{}{
+				{
+					"path":  "/spec/id",
+					"op":    "replace",
+					"value": "[[employer]]",
+				},
+			},
+		},
+	}
+	if !reflect.DeepEqual(integration.ResourcePatches, wantResourcePatches) {
+		t.Errorf("TestCatalogEndpoint() resource patches mismatch: got = %v, want %v",
+			integration.ResourcePatches, wantResourcePatches)
+	}
+	// ShortDescription
+	wantShortDescription := "lorem ipsum"
+	if integration.ShortDescription != wantShortDescription {
+		t.Errorf("TestCatalogEndpoint() short description mismatch: got = %v, want %v",
+			integration.ShortDescription, wantShortDescription)
+	}
+	// SupportedPlatforms
+	wantSupportedPlatforms := []string{"linux", "darwin"}
+	if !reflect.DeepEqual(integration.SupportedPlatforms, wantSupportedPlatforms) {
+		t.Errorf("TestCatalogEndpoint() supported platforms mismatch: got = %v, want %v",
+			integration.SupportedPlatforms, wantSupportedPlatforms)
+	}
+	// Tags
+	wantTags := []string{"tag1", "tag2"}
+	if !reflect.DeepEqual(integration.Tags, wantTags) {
+		t.Errorf("TestCatalogEndpoint() tags mismatch: got = %v, want %v",
+			integration.Tags, wantTags)
+	}
+	// Versions
+	wantVersions := []string{"1.2.3", "1.3.0"}
+	if !reflect.DeepEqual(integration.Versions, wantVersions) {
+		t.Errorf("TestCatalogEndpoint() version mismatch: got = %v, want %v",
+			integration.Versions, wantVersions)
 	}
 }
 
