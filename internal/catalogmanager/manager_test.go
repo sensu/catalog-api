@@ -55,8 +55,8 @@ func setupEndpointTest(tb testing.TB, integrations types.Integrations) (CatalogM
 	for _, integration := range integrations {
 		config := catalogv1.FixtureIntegration(integration.Namespace, integration.Name)
 		images := integrationloader.Images{
-			"images/image_1.png": "images png data 1",
-			"images/image_2.png": "images png data 2",
+			"image_1.png": "images png data 1",
+			"image_2.png": "images png data 2",
 		}
 
 		il := mockintegrationloader.Loader{}
@@ -594,7 +594,7 @@ func TestIntegrationVersionReadmeEndpoint(t *testing.T) {
 	}
 }
 
-// endpoint: /:release_sha256/v1/:namespace/:name/:version/README.md
+// endpoint: /:release_sha256/v1/:namespace/:name/:version/CHANGELOG.md
 func TestIntegrationVersionChangelogEndpoint(t *testing.T) {
 	integrations := defaultIntegrations()
 	m, err := setupEndpointTest(t, integrations)
@@ -621,6 +621,7 @@ func TestIntegrationVersionChangelogEndpoint(t *testing.T) {
 	}
 }
 
+// endpoint: /:release_sha256/v1/:namespace/:name/:version/logo.png
 func TestIntegrationVersionLogoEndpoint(t *testing.T) {
 	integrations := defaultIntegrations()
 	m, err := setupEndpointTest(t, integrations)
@@ -644,6 +645,70 @@ func TestIntegrationVersionLogoEndpoint(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("logo mismatch: got = %v, want %v",
 			got, want)
+	}
+}
+
+// endpoint: /:release_sha256/v1/:namespace/:name/:version/img/:image
+func TestIntegrationVersionImageEndpoint(t *testing.T) {
+	integrations := defaultIntegrations()
+	m, err := setupEndpointTest(t, integrations)
+	if err := m.ProcessCatalog(); err != nil {
+		t.Fatal(err)
+	}
+
+	checksum, err := m.config.StagingChecksum()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name        string
+		namespace   string
+		integration string
+		version     string
+		image       string
+		want        string
+		wantErr     bool
+	}{
+		{
+			name:        "foo/bar/0.1.0 image_1.png",
+			namespace:   "foo",
+			integration: "bar",
+			version:     "0.1.0",
+			image:       "image_1.png",
+			want:        "images png data 1",
+		},
+		{
+			name:        "foo/bar/0.1.0 image_2.png",
+			namespace:   "foo",
+			integration: "bar",
+			version:     "0.1.0",
+			image:       "image_2.png",
+			want:        "images png data 2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoint := path.Join(
+				m.config.ReleaseDir,
+				checksum,
+				"v1",
+				tt.namespace,
+				tt.integration,
+				tt.version,
+				"img",
+				tt.image,
+			)
+
+			b, err := ioutil.ReadFile(endpoint)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(b) != tt.want {
+				t.Errorf("image data mismatch: got = %v, want %v", string(b), tt.want)
+			}
+		})
 	}
 }
 
