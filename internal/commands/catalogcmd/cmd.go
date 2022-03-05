@@ -24,6 +24,7 @@ type Config struct {
 	repoDir             string
 	tempDir             string
 	integrationsDirName string
+	snapshot            bool
 }
 
 func New(rootConfig rootcmd.Config) *ffcli.Command {

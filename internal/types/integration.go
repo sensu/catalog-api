@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"path"
 
 	semver "github.com/Masterminds/semver/v3"
 )
@@ -17,6 +18,15 @@ type IntegrationVersion struct {
 	BuildMetadata string
 	GitTag        string
 	GitRef        string
+	Source        string
+}
+
+func (i IntegrationVersion) Path(base string) string {
+	return path.Join(base, i.Namespace, i.Name)
+}
+
+func (i IntegrationVersion) TagName() string {
+	return fmt.Sprintf("%s/%s/%s", i.Namespace, i.Name, i.SemVer())
 }
 
 func FixtureIntegrationVersion(namespace, name string, major, minor, patch int) IntegrationVersion {

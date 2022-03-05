@@ -49,9 +49,9 @@ func (m CatalogManager) ProcessCatalog() error {
 			return err
 		}
 
-		for name, versions := range nsIntegrations.ByName() {
+		for _, versions := range nsIntegrations.ByName() {
 			latest := versions.LatestVersion()
-			integrationLoader := m.loader.NewIntegrationLoader(namespace, name, latest.SemVer())
+			integrationLoader := m.loader.NewIntegrationLoader(latest)
 
 			config, err := integrationLoader.LoadConfig()
 			if err != nil {
@@ -129,7 +129,7 @@ func (m CatalogManager) ProcessIntegrationVersions(namespace string, integration
 	}
 
 	latestVersion := integrations.LatestVersion()
-	integrationLoader := m.loader.NewIntegrationLoader(latestVersion.Namespace, latestVersion.Name, latestVersion.SemVer())
+	integrationLoader := m.loader.NewIntegrationLoader(latestVersion)
 	integrationConfig, err := integrationLoader.LoadConfig()
 	if err != nil {
 		return err
@@ -145,7 +145,7 @@ func (m CatalogManager) ProcessIntegrationVersions(namespace string, integration
 }
 
 func (m CatalogManager) ProcessIntegrationVersion(version types.IntegrationVersion) error {
-	integrationLoader := m.loader.NewIntegrationLoader(version.Namespace, version.Name, version.SemVer())
+	integrationLoader := m.loader.NewIntegrationLoader(version)
 
 	config, err := integrationLoader.LoadConfig()
 	if err != nil {
