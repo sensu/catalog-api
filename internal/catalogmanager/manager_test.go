@@ -391,6 +391,12 @@ func TestIntegrationEndpoint(t *testing.T) {
 		t.Errorf("tags mismatch: got = %v, want %v",
 			integration.Tags, wantTags)
 	}
+	// Version
+	wantVersion := "1.3.0"
+	if integration.Version != wantVersion {
+		t.Errorf("version mismatch: got = %v, want %v",
+			integration.Version, wantVersion)
+	}
 	// Versions
 	wantVersions := []string{"1.2.3", "1.3.0"}
 	if !reflect.DeepEqual(integration.Versions, wantVersions) {
