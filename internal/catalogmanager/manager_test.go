@@ -132,6 +132,7 @@ func TestCatalogEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	catalog := catalogapiv1.Catalog{}
 	if err := json.Unmarshal(b, &catalog); err != nil {
 		t.Fatal(err)
@@ -143,107 +144,129 @@ func TestCatalogEndpoint(t *testing.T) {
 		t.Fatal("namespaced_integrations is empty")
 	}
 
+	wantNsCounts := map[string]int{
+		"foo":        1,
+		"example_ns": 2,
+	}
+	for namespace, want := range wantNsCounts {
+		nsIntegrations, ok := catalog.NamespacedIntegrations[namespace]
+		if !ok {
+			t.Fatalf("namespace not found in catalog endpoint: %s", namespace)
+		}
+		got := len(nsIntegrations)
+		if got != want {
+			t.Fatalf("namespace count mismatch: namespace = %v, got = %v, want %v",
+				namespace, got, want)
+		}
+	}
+
 	tests := []struct {
-		name        string
-		index       int
-		cindex      int
-		namespace   string
-		integration string
-		version     string
-		wantErr     bool
+		name         string
+		integration  types.IntegrationVersion
+		wantNotFound bool
 	}{
 		{
 			name:        "foo/bar/0.1.0",
-			index:       0,
-			cindex:      0,
-			namespace:   "foo",
-			integration: "bar",
-			version:     "0.1.0",
+			integration: integrations[0],
+		},
+		{
+			name:         "example_ns/example/1.2.3",
+			integration:  integrations[1],
+			wantNotFound: true,
+		},
+		{
+			name:        "example_ns/example/1.3.0",
+			integration: integrations[2],
+		},
+		{
+			name:        "example_ns/other/4.5.9",
+			integration: integrations[3],
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cNamespace, ok := catalog.NamespacedIntegrations[tt.namespace]
-			if !ok {
-				t.Fatalf("namespace not found in catalog endpoint: %s", tt.namespace)
+			namespace := tt.integration.Namespace
+			name := tt.integration.Name
+			version := tt.integration.SemVer()
+
+			integration, err := catalog.GetIntegration(namespace, name, version)
+			gotNotFound := (err != nil)
+			if gotNotFound != tt.wantNotFound {
+				t.Errorf("wantNotFound: got = %v, want %v", gotNotFound, tt.wantNotFound)
+				return
 			}
-			if len(cNamespace) <= tt.cindex {
-				t.Fatalf("integration not found in catalog: namespace = %s, index = %d", tt.namespace, tt.cindex)
+			if err != nil {
+				return
 			}
-			cIntegration := cNamespace[tt.cindex]
-			if len(integrations) <= tt.index {
-				t.Fatalf("integration not found: namespace = %s, index = %d", tt.namespace, tt.index)
-			}
-			wIntegration := integrations[tt.index]
 
 			// Class
 			wantClass := "community"
-			if cIntegration.Class != wantClass {
+			if integration.Class != wantClass {
 				t.Errorf("class mismatch: got = %v, want %v",
-					cIntegration.Class, wantClass)
+					integration.Class, wantClass)
 			}
 			// Contributors
 			wantContributors := []string{"@artem", "@olha"}
-			if !reflect.DeepEqual(cIntegration.Contributors, wantContributors) {
+			if !reflect.DeepEqual(integration.Contributors, wantContributors) {
 				t.Errorf("contributors mismatch: got = %v, want %v",
-					cIntegration.Contributors, wantContributors)
+					integration.Contributors, wantContributors)
 			}
 			// DisplayName
-			wantDisplayName := strings.Title(tt.integration)
-			if cIntegration.DisplayName != wantDisplayName {
+			wantDisplayName := strings.Title(name)
+			if integration.DisplayName != wantDisplayName {
 				t.Errorf("display name mismatch: got = %v, want %v",
-					cIntegration.DisplayName, wantDisplayName)
+					integration.DisplayName, wantDisplayName)
 			}
 			// Metadata Namespace
-			if cIntegration.Metadata.Namespace != wIntegration.Namespace {
+			if integration.Metadata.Namespace != namespace {
 				t.Errorf("metadata namespace mismatch: got = %v, want %v",
-					cIntegration.Metadata.Namespace, wIntegration.Namespace)
+					integration.Metadata.Namespace, namespace)
 			}
 			// Metadata Name
-			if cIntegration.Metadata.Name != wIntegration.Name {
+			if integration.Metadata.Name != name {
 				t.Errorf("metadata name mismatch: got = %v, want %v",
-					cIntegration.Metadata.Name, wIntegration.Name)
+					integration.Metadata.Name, name)
 			}
 			// Prompts
 			wantPrompts := *new([]catalogv1.Prompt)
-			if !reflect.DeepEqual(cIntegration.Prompts, wantPrompts) {
+			if !reflect.DeepEqual(integration.Prompts, wantPrompts) {
 				t.Errorf("prompts mismatch: got = %v, want %v",
-					cIntegration.Prompts, wantPrompts)
+					integration.Prompts, wantPrompts)
 			}
 			// Provider
 			wantProvider := "alerts"
-			if cIntegration.Provider != wantProvider {
+			if integration.Provider != wantProvider {
 				t.Errorf("provider mismatch: got = %v, want %v",
-					cIntegration.Provider, wantProvider)
+					integration.Provider, wantProvider)
 			}
 			// ResourcePatches
 			wantResourcePatches := *new([]catalogv1.ResourcePatch)
-			if !reflect.DeepEqual(cIntegration.ResourcePatches, wantResourcePatches) {
+			if !reflect.DeepEqual(integration.ResourcePatches, wantResourcePatches) {
 				t.Errorf("resource patches mismatch: got = %v, want %v",
-					cIntegration.ResourcePatches, wantResourcePatches)
+					integration.ResourcePatches, wantResourcePatches)
 			}
 			// ShortDescription
 			wantShortDescription := "lorem ipsum"
-			if cIntegration.ShortDescription != wantShortDescription {
+			if integration.ShortDescription != wantShortDescription {
 				t.Errorf("short description mismatch: got = %v, want %v",
-					cIntegration.ShortDescription, wantShortDescription)
+					integration.ShortDescription, wantShortDescription)
 			}
 			// SupportedPlatforms
 			wantSupportedPlatforms := []string{"linux", "darwin"}
-			if !reflect.DeepEqual(cIntegration.SupportedPlatforms, wantSupportedPlatforms) {
+			if !reflect.DeepEqual(integration.SupportedPlatforms, wantSupportedPlatforms) {
 				t.Errorf("supported platforms mismatch: got = %v, want %v",
-					cIntegration.SupportedPlatforms, wantSupportedPlatforms)
+					integration.SupportedPlatforms, wantSupportedPlatforms)
 			}
 			// Tags
 			wantTags := []string{"tag1", "tag2"}
-			if !reflect.DeepEqual(cIntegration.Tags, wantTags) {
+			if !reflect.DeepEqual(integration.Tags, wantTags) {
 				t.Errorf("tags mismatch: got = %v, want %v",
-					cIntegration.Tags, wantTags)
+					integration.Tags, wantTags)
 			}
 			// Version
-			if cIntegration.Version != tt.version {
+			if integration.Version != version {
 				t.Errorf("version mismatch: got = %v, want %v",
-					cIntegration.Version, tt.version)
+					integration.Version, version)
 			}
 		})
 	}
