@@ -3,6 +3,7 @@ package catalogv1
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	metav1 "github.com/sensu/catalog-api/internal/api/metadata/v1"
 )
@@ -37,6 +38,51 @@ type Integration struct {
 	Tags               []string        `json:"tags" yaml:"tags"`
 	Prompts            []Prompt        `json:"prompts,omitempty" yaml:"prompts,omitempty"`
 	ResourcePatches    []ResourcePatch `json:"resource_patches,omitempty" yaml:"resource_patches,omitempty"`
+}
+
+func FixtureIntegration(namespace, name string) Integration {
+	return Integration{
+		Class:        "community",
+		Contributors: []string{"@artem", "@olha"},
+		DisplayName:  strings.Title(name),
+		Metadata:     metav1.FixtureMetadata(namespace, name),
+		Prompts: []Prompt{
+			{
+				Type:  "section",
+				Title: "Example Section",
+			},
+			{
+				Type: "question",
+				Name: "employer",
+				Input: map[string]interface{}{
+					"type":        "string",
+					"title":       "Who does Number Two work for?",
+					"description": "Provide the name of the person",
+					"default":     "Dr. Evil",
+				},
+			},
+		},
+		Provider: "alerts",
+		ResourcePatches: []ResourcePatch{
+			{
+				Resource: ResourcePatchRef{
+					Type:       "Handler",
+					ApiVersion: "core/v2",
+					Name:       "foo_handler",
+				},
+				Patches: []map[string]interface{}{
+					{
+						"path":  "/spec/id",
+						"op":    "replace",
+						"value": "[[employer]]",
+					},
+				},
+			},
+		},
+		ShortDescription:   "lorem ipsum",
+		SupportedPlatforms: []string{"linux", "darwin"},
+		Tags:               []string{"tag1", "tag2"},
+	}
 }
 
 func (i Integration) Validate() error {

@@ -7,13 +7,14 @@ import (
 )
 
 // GET /api/:generated_sha/v1/integrations/:namespace/:name.json
-func GenerateIntegrationEndpoint(basePath string, integration catalogv1.Integration, ivs []types.IntegrationVersion) error {
+func GenerateIntegrationEndpoint(basePath string, integration catalogv1.Integration, ivs types.Integrations) error {
 	versions := []string{}
 	for _, iv := range ivs {
 		versions = append(versions, iv.SemVer())
 	}
 	integrationWithVersions := catalogapiv1.IntegrationWithVersions{
 		Integration: integration,
+		Version:     ivs.LatestVersion().SemVer(),
 		Versions:    versions,
 	}
 	endpoint := catalogapiv1.NewIntegrationEndpoint(basePath, integrationWithVersions)

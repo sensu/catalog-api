@@ -192,6 +192,7 @@ func (e IntegrationEndpoint) GetData() interface{}  { return e.data }
 
 type IntegrationWithVersions struct {
 	catalogv1.Integration
+	Version  string   `json:"version" yaml:"version"`
 	Versions []string `json:"versions" yaml:"versions"`
 }
 

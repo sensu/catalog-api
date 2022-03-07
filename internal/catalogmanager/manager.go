@@ -12,7 +12,6 @@ import (
 	"github.com/sensu/catalog-api/internal/catalogloader"
 	"github.com/sensu/catalog-api/internal/endpoints"
 	"github.com/sensu/catalog-api/internal/types"
-	"github.com/sensu/catalog-api/internal/util"
 )
 
 type CatalogManager struct {
@@ -44,16 +43,16 @@ func (m CatalogManager) ProcessCatalog() error {
 	}
 
 	integrationsByNamespace := integrations.ByNamespace()
+	latestNsIntegrations := map[string][]catalogapiv1.IntegrationVersion{}
 	for namespace, nsIntegrations := range integrationsByNamespace {
 		if err := m.ProcessNamespace(namespace, nsIntegrations); err != nil {
 			return err
 		}
-	}
 
-	latestNsIntegrations := map[string][]catalogapiv1.IntegrationVersion{}
-	for namespace, nsIntegrations := range integrationsByNamespace.FilterByLatestVersions() {
-		for _, integration := range nsIntegrations {
-			integrationLoader := m.loader.NewIntegrationLoader(namespace, integration.Name, integration.SemVer())
+		for name, versions := range nsIntegrations.ByName() {
+			latest := versions.LatestVersion()
+			integrationLoader := m.loader.NewIntegrationLoader(namespace, name, latest.SemVer())
+
 			config, err := integrationLoader.LoadConfig()
 			if err != nil {
 				return err
@@ -69,7 +68,7 @@ func (m CatalogManager) ProcessCatalog() error {
 
 			iv := catalogapiv1.IntegrationVersion{
 				Integration: config,
-				Version:     integration.SemVer(),
+				Version:     latest.SemVer(),
 			}
 
 			latestNsIntegrations[namespace] = append(latestNsIntegrations[namespace], iv)
@@ -80,10 +79,9 @@ func (m CatalogManager) ProcessCatalog() error {
 		return fmt.Errorf("error generating catalog endpoint: %w", err)
 	}
 
-	// calculate the sha256 checksum of the generated api
-	checksum, err := util.CalculateDirChecksum(m.config.StagingDir, "staging")
+	checksum, err := m.config.StagingChecksum()
 	if err != nil {
-		return fmt.Errorf("error calculating checksum of staging dir: %w", err)
+		return err
 	}
 
 	// copy the staging dir to the release dir

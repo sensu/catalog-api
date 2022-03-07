@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"golang.org/x/mod/semver"
+	semver "github.com/Masterminds/semver/v3"
 )
 
 // IntegrationVersion is a representation of a single integration version
@@ -17,6 +17,20 @@ type IntegrationVersion struct {
 	BuildMetadata string
 	GitTag        string
 	GitRef        string
+}
+
+func FixtureIntegrationVersion(namespace, name string, major, minor, patch int) IntegrationVersion {
+	return IntegrationVersion{
+		Name:          name,
+		Namespace:     namespace,
+		Major:         major,
+		Minor:         minor,
+		Patch:         patch,
+		Prerelease:    "",
+		BuildMetadata: "",
+		GitTag:        fmt.Sprintf("%s/%s/%d.%d.%d", namespace, name, major, minor, patch),
+		GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
+	}
 }
 
 func (i IntegrationVersion) String() string {
@@ -44,7 +58,9 @@ func (i Integrations) LatestVersion() IntegrationVersion {
 
 	for j, version := range i {
 		if j != 0 {
-			if semver.Compare(latestVersion.SemVer(), version.SemVer()) == -1 {
+			latest := semver.MustParse(latestVersion.SemVer())
+			next := semver.MustParse(version.SemVer())
+			if next.GreaterThan(latest) {
 				latestVersion = version
 			}
 		} else {
@@ -93,14 +109,6 @@ func (i Integrations) Versions() []string {
 
 // NamespacedIntegrations is a mapping of namespaces to Integrations
 type NamespacedIntegrations map[string]Integrations
-
-func (n NamespacedIntegrations) FilterByLatestVersions() NamespacedIntegrations {
-	nsIntegrations := NamespacedIntegrations{}
-	for namespace, integrations := range n {
-		nsIntegrations[namespace] = append(nsIntegrations[namespace], integrations.LatestVersion())
-	}
-	return nsIntegrations
-}
 
 // IntegrationVersions is a mapping of integration names to Integrations
 type IntegrationVersions map[string]Integrations
