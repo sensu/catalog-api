@@ -18,7 +18,7 @@ func (m CatalogManager) ValidateCatalog() error {
 	validationFailed := false
 	for namespace, integrations := range integrations.ByNamespace() {
 		for _, integration := range integrations {
-			integrationLoader := m.loader.NewIntegrationLoader(namespace, integration.Name, "")
+			integrationLoader := m.loader.NewIntegrationLoader(integration)
 
 			logger := log.With().
 				Str("namespace", namespace).

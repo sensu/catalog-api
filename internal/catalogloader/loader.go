@@ -7,5 +7,5 @@ import (
 
 type Loader interface {
 	LoadIntegrations() (types.Integrations, error)
-	NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader
+	NewIntegrationLoader(integration types.IntegrationVersion) integrationloader.Loader
 }

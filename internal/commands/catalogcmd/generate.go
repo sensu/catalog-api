@@ -30,6 +30,7 @@ func (c *Config) GenerateCommand() *ffcli.Command {
 
 func (c *Config) RegisterGenerateFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.tempDir, "temp-dir", defaultTempDir, "path to a temporary directory for generated files")
+	fs.BoolVar(&c.snapshot, "snapshot", false, "generate a catalog api for the current catalog branch")
 }
 
 func (c *Config) execGenerate(ctx context.Context, _ []string) error {
@@ -38,7 +39,12 @@ func (c *Config) execGenerate(ctx context.Context, _ []string) error {
 		return err
 	}
 
-	loader := catalogloader.NewGitLoader(repo, c.integrationsDirName)
+	var loader catalogloader.Loader
+	if c.snapshot {
+		loader = catalogloader.NewSnapshotLoader(repo, c.repoDir, c.integrationsDirName)
+	} else {
+		loader = catalogloader.NewGitLoader(repo, c.integrationsDirName)
+	}
 
 	cm, err := c.newCatalogManager(loader)
 	if err != nil {

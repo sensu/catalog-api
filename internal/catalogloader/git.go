@@ -3,7 +3,6 @@ package catalogloader
 import (
 	"errors"
 	"fmt"
-	"path"
 	"regexp"
 	"strconv"
 
@@ -16,7 +15,11 @@ import (
 
 const semverRegex = `(?P<Major>0|[1-9]\d*)\.(?P<Minor>0|[1-9]\d*)\.(?P<Patch>0|[1-9]\d*)(?:-(?P<Prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<BuildMetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
 
-var ErrUnmatchedGitTag = errors.New("unmatched git tag")
+var (
+	ErrUnmatchedGitTag = errors.New("unmatched git tag")
+
+	sourceGit = "git"
+)
 
 type GitLoader struct {
 	repo                *git.Repository
@@ -30,9 +33,9 @@ func NewGitLoader(repo *git.Repository, integrationsDirName string) GitLoader {
 	}
 }
 
-func (l GitLoader) NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader {
-	tagName := fmt.Sprintf("%s/%s/%s", namespace, integration, version)
-	integrationPath := path.Join(l.integrationsDirName, namespace, integration)
+func (l GitLoader) NewIntegrationLoader(integration types.IntegrationVersion) integrationloader.Loader {
+	tagName := integration.TagName()
+	integrationPath := integration.Path(l.integrationsDirName)
 	return integrationloader.NewGitLoader(l.repo, tagName, integrationPath)
 }
 
@@ -63,6 +66,7 @@ func (l GitLoader) LoadIntegrations() (types.Integrations, error) {
 			Str("name", iv.Name).
 			Str("namespace", iv.Namespace).
 			Str("version", iv.SemVer()).
+			Str("source", sourceGit).
 			Msg("Found integration version")
 
 		return nil
@@ -144,6 +148,7 @@ func getIntegrationVersionFromGitTag(tagRef *plumbing.Reference) (types.Integrat
 		BuildMetadata: buildMetadata,
 		GitTag:        gitTag,
 		GitRef:        gitRef,
+		Source:        sourceGit,
 	}
 
 	return iv, nil

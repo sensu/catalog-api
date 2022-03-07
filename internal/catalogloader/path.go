@@ -5,9 +5,12 @@ import (
 	"io/ioutil"
 	"path"
 
+	"github.com/rs/zerolog/log"
 	"github.com/sensu/catalog-api/internal/integrationloader"
 	"github.com/sensu/catalog-api/internal/types"
 )
+
+var sourcePath = "path"
 
 type PathLoader struct {
 	repoPath            string
@@ -25,8 +28,8 @@ func (l PathLoader) IntegrationsAbsPath() string {
 	return path.Join(l.repoPath, l.integrationsDirName)
 }
 
-func (l PathLoader) NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader {
-	integrationPath := path.Join(l.IntegrationsAbsPath(), namespace, integration)
+func (l PathLoader) NewIntegrationLoader(integration types.IntegrationVersion) integrationloader.Loader {
+	integrationPath := integration.Path(l.IntegrationsAbsPath())
 	return integrationloader.NewPathLoader(integrationPath)
 }
 
@@ -55,15 +58,23 @@ func (l PathLoader) LoadIntegrations() (types.Integrations, error) {
 					integration := types.IntegrationVersion{
 						Name:          namespaceFile.Name(),
 						Namespace:     namespace,
-						Major:         0,
+						Major:         99991231,
 						Minor:         0,
 						Patch:         0,
 						Prerelease:    "",
 						BuildMetadata: "",
 						GitTag:        "",
 						GitRef:        "",
+						Source:        sourcePath,
 					}
 					integrations = append(integrations, integration)
+
+					log.Info().
+						Str("name", integration.Name).
+						Str("namespace", integration.Namespace).
+						Str("version", integration.SemVer()).
+						Str("source", sourcePath).
+						Msg("Found integration version")
 				}
 			}
 		}
