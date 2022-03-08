@@ -25,6 +25,7 @@ type Config struct {
 	tempDir             string
 	integrationsDirName string
 	snapshot            bool
+	watch               bool
 }
 
 func New(rootConfig rootcmd.Config) *ffcli.Command {
