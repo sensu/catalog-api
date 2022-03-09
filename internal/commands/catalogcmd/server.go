@@ -106,18 +106,13 @@ func (c *Config) watchRepo(ctx context.Context, process func() error) (err error
 		defer watcher.Close()
 		for {
 			select {
-			case _, ok := <-watcher.Events:
-				if !ok {
-					return
+			case err := <-dedupeWatchEvents(ctx, watcher):
+				if err != nil {
+					log.Error().Err(err)
 				}
 				if err := process(); err != nil {
 					log.Error().Err(err).Msg("error occurred while processing")
 				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Error().Err(err)
 			case <-ctx.Done():
 				return
 			}
@@ -157,7 +152,6 @@ func (c *Config) prepare(ctx context.Context, symlink string) (cleanup func(), e
 	}
 	log.Info().Msgf("api prepared: %s", cm.tmpdir)
 	return func() {
-		log.Warn().Msgf("cleaning up tmp dir: %s", cm.tmpdir)
 		_ = os.RemoveAll(cm.tmpdir)
 		_ = os.RemoveAll(symlink)
 	}, err

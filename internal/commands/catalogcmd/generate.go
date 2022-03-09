@@ -66,9 +66,10 @@ func (c *Config) execGenerateWatcher(ctx context.Context) error {
 	for {
 		lastOutdir := outdir
 		select {
-		case _, ok := <-watcher.Events:
-			if !ok {
-				return nil
+		case err := <-dedupeWatchEvents(ctx, watcher):
+			if err != nil {
+				log.Error().Err(err)
+				continue
 			}
 
 			log.Debug().Msg("update detected, rebuilding...")
@@ -83,11 +84,6 @@ func (c *Config) execGenerateWatcher(ctx context.Context) error {
 			}
 
 			log.Info().Msgf("new outdir: %s", outdir)
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return nil
-			}
-			log.Error().Err(err)
 		case <-exit:
 			return nil
 		}

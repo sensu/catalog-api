@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-git/go-git/v5"
@@ -13,10 +14,9 @@ import (
 	"github.com/sensu/catalog-api/internal/catalogmanager"
 )
 
-type catalogManager interface {
-	ProcessCatalog() error
-	Validate() error
-}
+var (
+	throttleDelay = 1250 * time.Millisecond
+)
 
 type tmpCatalogManager struct {
 	catalogmanager.CatalogManager
@@ -104,4 +104,31 @@ func (c *Config) createWatcher(ctx context.Context) (*fsnotify.Watcher, error) {
 		return watcher, fmt.Errorf("error watching repo dir: %w", err)
 	}
 	return watcher, err
+}
+
+func dedupeWatchEvents(ctx context.Context, watcher *fsnotify.Watcher) chan error {
+	ch := make(chan error, 1)
+	go func() {
+		timer := time.NewTimer(60 * time.Minute)
+		stoptimer := func() {
+			if !timer.Stop() {
+				<-timer.C
+			}
+		}
+		for {
+			select {
+			case <-watcher.Events:
+				stoptimer()
+				timer.Reset(throttleDelay)
+			case err := <-watcher.Errors:
+				ch <- err
+			case <-ctx.Done():
+				stoptimer()
+				return
+			case <-timer.C:
+				ch <- nil
+			}
+		}
+	}()
+	return ch
 }
