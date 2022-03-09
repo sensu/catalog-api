@@ -57,7 +57,9 @@ func (c *Config) startServer(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	defer func() {
+		cleanup() // inside closure to ensure we deref the correct func
+	}()
 
 	// watch
 	if c.watch {
@@ -153,7 +155,9 @@ func (c *Config) prepare(ctx context.Context, symlink string) (cleanup func(), e
 	if err := os.Symlink(filepath.Join(cm.tmpdir, "release"), symlink); err != nil {
 		return cleanup, err
 	}
+	log.Info().Msgf("api prepared: %s", cm.tmpdir)
 	return func() {
+		log.Warn().Msgf("cleaning up tmp dir: %s", cm.tmpdir)
 		_ = os.RemoveAll(cm.tmpdir)
 		_ = os.RemoveAll(symlink)
 	}, err

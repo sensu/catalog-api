@@ -90,6 +90,16 @@ func (c *Config) createWatcher(ctx context.Context) (*fsnotify.Watcher, error) {
 	if err != nil {
 		return watcher, fmt.Errorf("error configuring watcher: %w", err)
 	}
+	dir := filepath.Join(c.repoDir, "integrations")
+	walker := func(path string, fi os.FileInfo, err error) error {
+		if fi.Mode().IsDir() {
+			return watcher.Add(path)
+		}
+		return nil
+	}
+	if err := filepath.Walk(dir, walker); err != nil {
+		return watcher, fmt.Errorf("error adding paths to watcher: %w", err)
+	}
 	if err := watcher.Add(c.repoDir); err != nil {
 		return watcher, fmt.Errorf("error watching repo dir: %w", err)
 	}
