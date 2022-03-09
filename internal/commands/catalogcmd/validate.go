@@ -27,7 +27,7 @@ func (c *Config) ValidateCommand() *ffcli.Command {
 func (c *Config) execValidate(context.Context, []string) error {
 	loader := catalogloader.NewPathLoader(c.repoDir, c.integrationsDirName)
 
-	cm, err := c.newCatalogManager(loader)
+	cm, _, err := c.newCatalogManager(loader)
 	if err != nil {
 		return err
 	}
