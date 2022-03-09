@@ -56,7 +56,7 @@ func (c *Config) execGenerateWatcher(ctx context.Context) error {
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	// setup file-system notifications
-	watcher, err := c.watchRepo(ctx)
+	watcher, err := c.createWatcher(ctx)
 	if err != nil {
 		return err
 	}

@@ -44,47 +44,35 @@ func (c *Config) RegisterServerFlags(fs *flag.FlagSet) {
 }
 
 func (c *Config) execServer(ctx context.Context, _ []string) error {
-	if c.watch {
-		return c.startServerWatcher(ctx)
-	}
 	return c.startServer(ctx)
 }
 
-func (c *Config) startServerWatcher(ctx context.Context) error {
-	// ...
-	return nil
-}
+func (c *Config) startServer(ctx context.Context) (err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-func (c *Config) startServer(ctx context.Context) error {
-	// configure
-	cm, outdir, err := c.newCatalogManagerFromRepo(ctx)
+	// prepare
+	symlink := filepath.Join(c.tempDir, "current")
+	cleanup, err := c.prepare(ctx, symlink)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(outdir)
+	defer cleanup()
 
-	// generate
-	if err := cm.ProcessCatalog(); err != nil {
-		return err
+	// watch
+	if c.watch {
+		process := func() error {
+			cleanup()
+			cleanup, err = c.prepare(ctx, symlink)
+			return err
+		}
+		if err = c.watchRepo(ctx, process); err != nil {
+			return
+		}
 	}
-
-	// validate
-	if err := cm.ValidateCatalog(); err != nil {
-		log.Warn().Err(err)
-	}
-
-	// symlink
-	symdir := filepath.Join(c.tempDir, "current")
-	if err := os.RemoveAll(symdir); err != nil {
-		return err
-	}
-	if err := os.Symlink(filepath.Join(outdir, "release"), symdir); err != nil {
-		return err
-	}
-	defer os.RemoveAll(symdir)
 
 	// start server
-	router := http.FileServer(http.Dir(symdir))
+	router := http.FileServer(http.Dir(symlink))
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.port),
 		Handler: router,
@@ -102,4 +90,71 @@ func (c *Config) startServer(ctx context.Context) error {
 
 	<-exit
 	return server.Shutdown(ctx)
+}
+
+func (c *Config) watchRepo(ctx context.Context, process func() error) (err error) {
+	// setup file-system notifications
+	watcher, err := c.createWatcher(ctx)
+	if err != nil {
+		return err
+	}
+
+	// spin up process
+	go func() {
+		defer watcher.Close()
+		for {
+			select {
+			case _, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if err := process(); err != nil {
+					log.Error().Err(err).Msg("error occurred while processing")
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Error().Err(err)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return
+}
+
+func (c *Config) prepare(ctx context.Context, symlink string) (cleanup func(), err error) {
+	// configure
+	cm, err := c.newCatalogManagerFromRepo(ctx)
+	if err != nil {
+		return cleanup, err
+	}
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(cm.tmpdir)
+		}
+	}()
+
+	// generate
+	if err := cm.ProcessCatalog(); err != nil {
+		return cleanup, err
+	}
+
+	// validate
+	if err := cm.ValidateCatalog(); err != nil {
+		log.Warn().Err(err)
+	}
+
+	// symlink
+	if err := os.RemoveAll(symlink); err != nil {
+		return cleanup, err
+	}
+	if err := os.Symlink(filepath.Join(cm.tmpdir, "release"), symlink); err != nil {
+		return cleanup, err
+	}
+	return func() {
+		_ = os.RemoveAll(cm.tmpdir)
+		_ = os.RemoveAll(symlink)
+	}, err
 }
