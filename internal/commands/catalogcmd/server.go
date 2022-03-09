@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -80,8 +81,15 @@ func (c *Config) startServer(ctx context.Context) (err error) {
 		Handler: router,
 	}
 	go func() {
-		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
+		// start the tcp listener
+		listener, err := net.Listen("tcp", server.Addr)
+		if err != nil {
+			panic(err)
+		}
+		log.Info().Str("address", server.Addr).Msg("API server started")
+
+		// serve http requests over the tcp listener
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
@@ -150,7 +158,7 @@ func (c *Config) prepare(ctx context.Context, symlink string) (cleanup func(), e
 	if err := os.Symlink(filepath.Join(cm.tmpdir, "release"), symlink); err != nil {
 		return cleanup, err
 	}
-	log.Info().Msgf("api prepared: %s", cm.tmpdir)
+	log.Info().Str("path", cm.tmpdir).Msg("API generated")
 	return func() {
 		_ = os.RemoveAll(cm.tmpdir)
 		_ = os.RemoveAll(symlink)
