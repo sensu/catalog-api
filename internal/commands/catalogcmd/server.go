@@ -40,11 +40,14 @@ func (c *Config) ServerCommand() *ffcli.Command {
 func (c *Config) RegisterServerFlags(fs *flag.FlagSet) {
 	fs.IntVar(&c.port, "port", defaultServerPort, "port to use for dev server")
 	fs.StringVar(&c.tempDir, "temp-dir", defaultTempDir, "path to a temporary directory for generated files")
-	fs.BoolVar(&c.snapshot, "snapshot", defaultSnapshot, "generate a catalog api for the current catalog branch")
+	fs.BoolVar(&c.snapshot, "without-snapshot", defaultSnapshot, "generate a catalog api using tags only")
 	fs.BoolVar(&c.watch, "watch", defaultWatchMode, "enter watch mode, which rebuilds on file change")
 }
 
 func (c *Config) execServer(ctx context.Context, _ []string) error {
+	// treat snapshot as if it were without-snapshot
+	c.snapshot = !c.snapshot
+
 	return c.startServer(ctx)
 }
 
