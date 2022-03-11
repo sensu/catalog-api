@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/rs/zerolog/log"
+	"github.com/sensu/catalog-api/internal/catalogserver"
 )
 
 const (
@@ -65,56 +64,34 @@ func (c *Config) startServer(ctx context.Context) (err error) {
 		cleanup() // inside closure to ensure we deref the correct func
 	}()
 
+	// start server
+	listenAddr := fmt.Sprintf(":%d", c.port)
+	server := catalogserver.NewCatalogServer(listenAddr, symlink)
+	go server.Start(ctx)
+
 	// watch
 	if c.watch {
 		process := func() error {
+			log.Info().Msg("Filesystem change detected")
 			cleanup()
 			cleanup, err = c.prepare(ctx, symlink)
-			return err
+			if err != nil {
+				return err
+			}
+			server.HandleWatchEvent()
+			return nil
 		}
 		if err = c.watchRepo(ctx, process); err != nil {
 			return
 		}
 	}
 
-	// start server
-	router := http.FileServer(http.Dir(symlink))
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", c.port),
-		Handler: addDefaultHeaders(router.ServeHTTP),
-	}
-	go func() {
-		// start the tcp listener
-		listener, err := net.Listen("tcp", server.Addr)
-		if err != nil {
-			panic(err)
-		}
-		log.Info().Str("address", server.Addr).Msg("API server started")
-
-		// serve http requests over the tcp listener
-		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
-
 	// configure channel for exit signal
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	<-exit
-	return server.Shutdown(ctx)
-}
-
-func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// allow cross domain AJAX requests
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		// disable caching of served files
-		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
-
-		fn(w, r)
-	}
+	return server.Stop(ctx)
 }
 
 func (c *Config) watchRepo(ctx context.Context, process func() error) (err error) {
