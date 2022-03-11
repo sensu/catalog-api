@@ -81,7 +81,7 @@ func (c *Config) startServer(ctx context.Context) (err error) {
 	router := http.FileServer(http.Dir(symlink))
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.port),
-		Handler: router,
+		Handler: addDefaultHeaders(router.ServeHTTP),
 	}
 	go func() {
 		// start the tcp listener
@@ -103,6 +103,18 @@ func (c *Config) startServer(ctx context.Context) (err error) {
 
 	<-exit
 	return server.Shutdown(ctx)
+}
+
+func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// allow cross domain AJAX requests
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// disable caching of served files
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+
+		fn(w, r)
+	}
 }
 
 func (c *Config) watchRepo(ctx context.Context, process func() error) (err error) {
