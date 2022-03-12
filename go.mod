@@ -11,6 +11,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
+require github.com/gorilla/websocket v1.5.0 // indirect
+
 require (
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
@@ -18,6 +20,7 @@ require (
 	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/fsnotify/fsnotify v1.5.1
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
