@@ -9,11 +9,12 @@ import (
 )
 
 type Prompt struct {
-	Type  string                 `json:"type" yaml:"type"`
-	Name  string                 `json:"name,omitempty" yaml:"name,omitempty"`
-	Body  string                 `json:"body,omitempty" yaml:"body,omitempty"`
-	Title string                 `json:"title,omitempty" yaml:"title,omitempty"`
-	Input map[string]interface{} `json:"input,omitempty" yaml:"input,omitempty"`
+	Type     string                 `json:"type" yaml:"type"`
+	Name     string                 `json:"name,omitempty" yaml:"name,omitempty"`
+	Body     string                 `json:"body,omitempty" yaml:"body,omitempty"`
+	Title    string                 `json:"title,omitempty" yaml:"title,omitempty"`
+	Input    map[string]interface{} `json:"input,omitempty" yaml:"input,omitempty"`
+	Required bool                   `json:"required,omitempty" yaml:"required,omitempty"`
 }
 
 type ResourcePatch struct {
