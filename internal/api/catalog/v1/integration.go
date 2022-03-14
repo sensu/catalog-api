@@ -139,6 +139,7 @@ func validClasses() []string {
 		"community",
 		"partner",
 		"supported",
+		"enterprise",
 	}
 }
 
