@@ -37,13 +37,13 @@ func (_m *Loader) LoadIntegrations() (types.Integrations, error) {
 	return r0, r1
 }
 
-// NewIntegrationLoader provides a mock function with given fields: namespace, integration, version
-func (_m *Loader) NewIntegrationLoader(namespace string, integration string, version string) integrationloader.Loader {
-	ret := _m.Called(namespace, integration, version)
+// NewIntegrationLoader provides a mock function with given fields: integration
+func (_m *Loader) NewIntegrationLoader(integration types.IntegrationVersion) integrationloader.Loader {
+	ret := _m.Called(integration)
 
 	var r0 integrationloader.Loader
-	if rf, ok := ret.Get(0).(func(string, string, string) integrationloader.Loader); ok {
-		r0 = rf(namespace, integration, version)
+	if rf, ok := ret.Get(0).(func(types.IntegrationVersion) integrationloader.Loader); ok {
+		r0 = rf(integration)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(integrationloader.Loader)
