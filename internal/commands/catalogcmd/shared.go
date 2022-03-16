@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-git/go-git/v5"
+	"github.com/rs/zerolog/log"
 	"github.com/sensu/catalog-api/internal/catalogloader"
 	"github.com/sensu/catalog-api/internal/catalogmanager"
 )
@@ -131,4 +134,115 @@ func dedupeWatchEvents(ctx context.Context, watcher *fsnotify.Watcher) chan erro
 		}
 	}()
 	return ch
+}
+
+type Server interface {
+	Start(context.Context)
+	Stop(context.Context) error
+}
+
+type WatchableServer interface {
+	Server
+	HandleWatchEvent()
+}
+
+func (c *Config) startServerWithWatcher(ctx context.Context, symlink string, server WatchableServer) (err error) {
+	// prepare
+	cleanup, err := c.prepare(ctx, symlink)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cleanup() // inside closure to ensure we deref the correct func
+	}()
+
+	// start server
+	go server.Start(ctx)
+
+	// watch
+	if c.watch {
+		process := func() error {
+			log.Info().Msg("Filesystem change detected")
+			cleanup()
+			cleanup, err = c.prepare(ctx, symlink)
+			if err != nil {
+				return err
+			}
+			server.HandleWatchEvent()
+			return nil
+		}
+		if err = c.watchRepo(ctx, process); err != nil {
+			return
+		}
+	}
+
+	// configure channel for exit signal
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+
+	<-exit
+	return server.Stop(ctx)
+}
+
+func (c *Config) watchRepo(ctx context.Context, process func() error) (err error) {
+	// setup file-system notifications
+	watcher, err := c.createWatcher(ctx)
+	if err != nil {
+		return err
+	}
+
+	// spin up process
+	go func() {
+		defer watcher.Close()
+		for {
+			select {
+			case err := <-dedupeWatchEvents(ctx, watcher):
+				if err != nil {
+					log.Error().Err(err)
+				}
+				if err := process(); err != nil {
+					log.Error().Err(err).Msg("error occurred while processing")
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return
+}
+
+func (c *Config) prepare(ctx context.Context, symlink string) (cleanup func(), err error) {
+	// configure
+	cm, err := c.newCatalogManagerFromRepo(ctx)
+	if err != nil {
+		return cleanup, err
+	}
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(cm.tmpdir)
+		}
+	}()
+
+	// generate
+	if err := cm.ProcessCatalog(); err != nil {
+		return cleanup, err
+	}
+
+	// validate
+	if err := cm.ValidateCatalog(); err != nil {
+		log.Warn().Err(err)
+	}
+
+	// symlink
+	if err := os.RemoveAll(symlink); err != nil {
+		return cleanup, err
+	}
+	if err := os.Symlink(filepath.Join(cm.tmpdir, "release"), symlink); err != nil {
+		return cleanup, err
+	}
+	log.Info().Str("path", cm.tmpdir).Msg("API generated")
+	return func() {
+		_ = os.RemoveAll(cm.tmpdir)
+		_ = os.RemoveAll(symlink)
+	}, err
 }

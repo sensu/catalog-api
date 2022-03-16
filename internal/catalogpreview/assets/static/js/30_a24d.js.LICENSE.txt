@@ -1,0 +1,7 @@
+/*!
+ * https://github.com/Starcounter-Jack/JSON-Patch
+ * (c) 2017 Joachim Wester
+ * MIT license
+ */
+
+/*! js-yaml 4.1.0 https://github.com/nodeca/js-yaml @license MIT */

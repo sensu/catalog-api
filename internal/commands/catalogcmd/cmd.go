@@ -15,6 +15,7 @@ var (
 	defaultTempDir             = os.TempDir()
 	defaultSnapshot            = false
 	defaultWatchMode           = false
+	defaultApiURL              = "http://localhost:8080"
 )
 
 type Config struct {
@@ -25,6 +26,7 @@ type Config struct {
 	snapshot            bool
 	watch               bool
 	port                int
+	apiURL              string
 }
 
 func New(rootConfig rootcmd.Config) *ffcli.Command {
@@ -45,6 +47,7 @@ func New(rootConfig rootcmd.Config) *ffcli.Command {
 			cfg.GenerateCommand(),
 			cfg.ValidateCommand(),
 			cfg.ServerCommand(),
+			cfg.PreviewCommand(),
 		},
 	}
 }

@@ -9,16 +9,10 @@ import (
 	"github.com/sensu/catalog-api/internal/transport"
 )
 
-type CatalogServer struct {
-	server    *http.Server
-	symlink   string
-	transport *transport.Transport
-}
-
-func NewCatalogServer(listenAddr string, symlink string) CatalogServer {
+func NewCatalogServer(listenAddr string, symlink string) Server {
 	t := transport.NewTransport()
 
-	handler := &handler{
+	handler := &Handler{
 		symlink:   symlink,
 		transport: &t,
 	}
@@ -28,14 +22,22 @@ func NewCatalogServer(listenAddr string, symlink string) CatalogServer {
 		Handler: handler,
 	}
 
-	return CatalogServer{
+	return NewServer(server, &t)
+}
+
+type Server struct {
+	server    *http.Server
+	transport *transport.Transport
+}
+
+func NewServer(server *http.Server, transport *transport.Transport) Server {
+	return Server{
 		server:    server,
-		symlink:   symlink,
-		transport: &t,
+		transport: transport,
 	}
 }
 
-func (c *CatalogServer) Start(ctx context.Context) {
+func (c *Server) Start(ctx context.Context) {
 	// start the transport server
 	go c.transport.Start(ctx)
 
@@ -52,10 +54,10 @@ func (c *CatalogServer) Start(ctx context.Context) {
 	}
 }
 
-func (c *CatalogServer) Stop(ctx context.Context) error {
+func (c *Server) Stop(ctx context.Context) error {
 	return c.server.Shutdown(ctx)
 }
 
-func (c *CatalogServer) HandleWatchEvent() {
+func (c *Server) HandleWatchEvent() {
 	c.transport.Broadcast([]byte("refresh"))
 }
