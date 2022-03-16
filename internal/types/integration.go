@@ -40,6 +40,7 @@ func FixtureIntegrationVersion(namespace, name string, major, minor, patch int) 
 		BuildMetadata: "",
 		GitTag:        fmt.Sprintf("%s/%s/%d.%d.%d", namespace, name, major, minor, patch),
 		GitRef:        "d994c6bb648123a17e8f70a966857c546b2a6f94",
+		Source:        "git",
 	}
 }
 

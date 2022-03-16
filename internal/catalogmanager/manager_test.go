@@ -67,12 +67,7 @@ func setupEndpointTest(tb testing.TB, integrations types.Integrations) (CatalogM
 		il.On("LoadChangelog").Return("changelog markdown", nil)
 		il.On("LoadImages").Return(images, nil)
 
-		cl.On(
-			"NewIntegrationLoader",
-			integration.Namespace,
-			integration.Name,
-			integration.SemVer(),
-		).Return(&il)
+		cl.On("NewIntegrationLoader", integration).Return(&il)
 	}
 
 	m := newCatalogManager(tb)
@@ -784,12 +779,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
@@ -813,12 +803,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
@@ -844,12 +829,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
@@ -876,12 +856,8 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
+
 					return &cl
 				}(),
 			},
@@ -908,12 +884,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
@@ -942,12 +913,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
@@ -977,12 +943,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
@@ -1012,12 +973,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)
-					cl.On(
-						"NewIntegrationLoader",
-						mock.Anything,
-						mock.Anything,
-						mock.Anything,
-					).Return(&il)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
 
 					return &cl
 				}(),
