@@ -44,9 +44,6 @@ func (p PostInstall) Validate() error {
 			return errors.New("title must be empty for type markdown")
 		}
 	case "section":
-		if p.Body != "" {
-			return errors.New("body must be empty for type section")
-		}
 	default:
 		return fmt.Errorf("invalid type")
 	}

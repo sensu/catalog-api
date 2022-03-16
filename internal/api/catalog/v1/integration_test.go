@@ -54,8 +54,6 @@ func TestPostInstall_Validate(t *testing.T) {
 			fields: fields{
 				Type: "section",
 			},
-			wantErr:    true,
-			wantErrMsg: "title cannot be empty for type section",
 		},
 		{
 			name: "section type with title",
@@ -71,8 +69,6 @@ func TestPostInstall_Validate(t *testing.T) {
 				Body:  "foo",
 				Title: "bar",
 			},
-			wantErr:    true,
-			wantErrMsg: "body must be empty for type section",
 		},
 	}
 	for _, tt := range tests {
