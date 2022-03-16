@@ -28,6 +28,28 @@ type ResourcePatchRef struct {
 	Name       string `json:"name" yaml:"name"`
 }
 
+type PostInstall struct {
+	Type  string `json:"type" jaml:"type"`
+	Title string `json:"title,omitempty" yaml:"title,omitempty"`
+	Body  string `json:"body,omitempty" yaml:"body,omitempty"`
+}
+
+func (p PostInstall) Validate() error {
+	switch p.Type {
+	case "markdown":
+		if p.Body == "" {
+			return errors.New("body cannot be empty for type markdown")
+		}
+		if p.Title != "" {
+			return errors.New("title must be empty for type markdown")
+		}
+	case "section":
+	default:
+		return fmt.Errorf("invalid type")
+	}
+	return nil
+}
+
 type Integration struct {
 	Metadata           metav1.Metadata `json:"metadata" yaml:"metadata"`
 	DisplayName        string          `json:"display_name" yaml:"display_name"`
@@ -39,6 +61,7 @@ type Integration struct {
 	Tags               []string        `json:"tags" yaml:"tags"`
 	Prompts            []Prompt        `json:"prompts,omitempty" yaml:"prompts,omitempty"`
 	ResourcePatches    []ResourcePatch `json:"resource_patches,omitempty" yaml:"resource_patches,omitempty"`
+	PostInstall        []PostInstall   `json:"post_install,omitempty" yaml:"post_install,omitempty"`
 }
 
 func FixtureIntegration(namespace, name string) Integration {
