@@ -29,7 +29,7 @@ type ResourcePatchRef struct {
 }
 
 type PostInstall struct {
-	Type  string `json:"type" jaml:"type"`
+	Type  string `json:"type" yaml:"type"`
 	Title string `json:"title,omitempty" yaml:"title,omitempty"`
 	Body  string `json:"body,omitempty" yaml:"body,omitempty"`
 }
