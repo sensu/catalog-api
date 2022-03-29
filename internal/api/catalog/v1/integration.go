@@ -51,7 +51,9 @@ func (p PostInstall) Validate() error {
 }
 
 type Integration struct {
-	Metadata           metav1.Metadata `json:"metadata" yaml:"metadata"`
+	// Metadata omitempty hack: Meaningless to encoding/json in context of a struct field.
+	// indicates to cuelang go importer that the metadata field may be missing from integration definition.
+	Metadata           metav1.Metadata `json:"metadata,omitempty" yaml:"metadata"`
 	DisplayName        string          `json:"display_name" yaml:"display_name"`
 	Class              string          `json:"class" yaml:"class"`
 	Contributors       []string        `json:"contributors" yaml:"contributors"`
