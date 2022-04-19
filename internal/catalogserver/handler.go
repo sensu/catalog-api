@@ -8,12 +8,19 @@ import (
 	"github.com/sensu/catalog-api/internal/transport"
 )
 
-type handler struct {
+func NewHandler(transport *transport.Transport, symlink string) Handler {
+	return Handler{
+		transport: transport,
+		symlink:   symlink,
+	}
+}
+
+type Handler struct {
 	transport *transport.Transport
 	symlink   string
 }
 
-func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/ws":
 		h.serveWs(w, r)
@@ -28,7 +35,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h handler) serveWs(w http.ResponseWriter, r *http.Request) {
+func (h Handler) serveWs(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("remote_addr", r.RemoteAddr).Msg("WebSocket client connected")
 
 	upgrader := websocket.Upgrader{}

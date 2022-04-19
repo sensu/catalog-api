@@ -1,0 +1,2 @@
+/*! modernizr 3.11.8 (Custom Build) | MIT *
+ * https://modernizr.com/download/?-es6array-es6collections-fetch-intl-urlsearchparams !*/

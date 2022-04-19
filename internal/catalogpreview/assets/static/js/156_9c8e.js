@@ -1,0 +1,2 @@
+(window.webpackJsonp_name_chunkhash_4_=window.webpackJsonp_name_chunkhash_4_||[]).push([[156],{"59m6":function(n,a,e){"use strict";e.r(a);e("q1tI");var h=e("Z6qJ"),s=e("nKUr");a.default=()=>Object(s.jsx)(h.a,{viewBox:"0 0 24 24",children:Object(s.jsx)("path",{fill:"transparent",d:"M0 0h24v24H0z"})})}}]);
+//# sourceMappingURL=156_9c8e.js.map
