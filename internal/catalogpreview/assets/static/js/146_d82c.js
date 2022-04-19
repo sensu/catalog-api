@@ -1,2 +1,0 @@
-(window.webpackJsonp_name_chunkhash_4_=window.webpackJsonp_name_chunkhash_4_||[]).push([[146],{iZb1:function(n,a,c){"use strict";c.r(a);var h=c("q1tI"),e=c.n(h),s=c("Z6qJ"),t=c("nKUr");const o=e.a.memo(n=>Object(t.jsx)(s.a,{...n,children:Object(t.jsx)("path",{d:"M11,21h-1l1-7H7.5c-0.88,0-0.33-0.75-0.31-0.78C8.48,10.94,10.42,7.54,13.01,3h1l-1,7h3.51c0.4,0,0.62,0.19,0.4,0.66 C12.97,17.55,11,21,11,21z"})}));o.displayName="BoltIcon",a.default=o}}]);
-//# sourceMappingURL=146_d82c.js.map
