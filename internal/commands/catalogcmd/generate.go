@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -91,14 +92,15 @@ func (c *Config) execGenerateWatcher(ctx context.Context) error {
 }
 
 func (c *Config) execRunGenerate(ctx context.Context) error {
-	outdir, err := c.generate(ctx)
+	outDir, err := c.generate(ctx)
 	if err != nil {
 		return err
 	}
+	releaseDir := path.Join(outDir, "release")
 
 	// print outputs for github actions
 	// TODO(jk): enable this with a command flag,
 	// e.g. --with-github-action-outputs
-	fmt.Printf("::set-output name=release-dir::%s\n", outdir)
+	fmt.Printf("::set-output name=release-dir::%s\n", releaseDir)
 	return nil
 }
