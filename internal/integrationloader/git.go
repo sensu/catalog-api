@@ -1,6 +1,7 @@
 package integrationloader
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -88,6 +89,58 @@ func (l GitLoader) LoadImages() (Images, error) {
 	}
 
 	return images, nil
+}
+
+func (l GitLoader) LoadDashboards() (Dashboards, error) {
+	dashboards := Dashboards{}
+	dashboardsPath := path.Join(l.integrationPath, defaultDashboardsDirName)
+
+	// attempt to resolve the git ref to a revision
+	hash, err := l.repo.ResolveRevision(plumbing.Revision(l.ref))
+	if err != nil {
+		return dashboards, fmt.Errorf("error resolving git revision %s: %w", l.ref, err)
+	}
+
+	// attempt to retrieve the commit object for the hash
+	commit, err := l.repo.CommitObject(*hash)
+	if err != nil {
+		return dashboards, fmt.Errorf("error retrieving commit for hash %s: %w", hash, err)
+	}
+
+	// attempt to retrieve the directory tree for the commit
+	tree, err := commit.Tree()
+	if err != nil {
+		return dashboards, fmt.Errorf("error retrieving tree for commit %s: %w", hash, err)
+	}
+
+	dashboardsTree, err := tree.Tree(dashboardsPath)
+	if err != nil {
+		if errors.Is(err, object.ErrDirectoryNotFound) {
+			return dashboards, nil
+		}
+		return dashboards, err
+	}
+
+	if err := dashboardsTree.Files().ForEach(func(f *object.File) error {
+		match, _ := regexp.MatchString(reDashboardExtensions, f.Name)
+		if match {
+			data, err := f.Contents()
+			if err != nil {
+				return err
+			}
+			dashboardPath := path.Join(dashboardsPath, f.Name)
+			var anyMap map[string]interface{}
+			if err := json.Unmarshal([]byte(data), &anyMap); err != nil {
+				return fmt.Errorf("error unmarshaling dashboard: %w (%s)", err, dashboardPath)
+			}
+			dashboards[f.Name] = data
+		}
+		return nil
+	}); err != nil {
+		return dashboards, err
+	}
+
+	return dashboards, nil
 }
 
 func (l GitLoader) LoadLogo() (string, error) {

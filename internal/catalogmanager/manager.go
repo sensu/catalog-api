@@ -208,5 +208,17 @@ func (m CatalogManager) ProcessIntegrationVersion(version types.IntegrationVersi
 		}
 	}
 
+	// iterate through each .json file in the dashboards directory and create an
+	// endpoint for it
+	dashboards, err := integrationLoader.LoadDashboards()
+	if err != nil {
+		return fmt.Errorf("error loading integration images: %w", err)
+	}
+	for dashboardName, dashboardData := range dashboards {
+		if err := endpoints.GenerateIntegrationVersionDashboardEndpoint(m.config.StagingDir, config, version, dashboardName, dashboardData); err != nil {
+			return fmt.Errorf("error generating integration version dashboard endpoint: %w", err)
+		}
+	}
+
 	return nil
 }

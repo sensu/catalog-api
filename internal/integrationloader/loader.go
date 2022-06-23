@@ -9,17 +9,19 @@ import (
 )
 
 var (
-	defaultConfigName    = "sensu-integration.yaml"
-	defaultResourcesName = "sensu-resources.yaml"
-	defaultLogoName      = "logo.png"
-	defaultReadmeName    = "README.md"
-	defaultChangelogName = "CHANGELOG.md"
-	defaultImagesDirName = "img"
+	defaultConfigName        = "sensu-integration.yaml"
+	defaultResourcesName     = "sensu-resources.yaml"
+	defaultLogoName          = "logo.png"
+	defaultReadmeName        = "README.md"
+	defaultChangelogName     = "CHANGELOG.md"
+	defaultImagesDirName     = "img"
+	defaultDashboardsDirName = "dashboards"
 )
 
 type Loader interface {
 	LoadConfig() (catalogv1.Integration, error)
 	LoadChangelog() (string, error)
+	LoadDashboards() (Dashboards, error)
 	LoadImages() (Images, error)
 	LoadLogo() (string, error)
 	LoadReadme() (string, error)
