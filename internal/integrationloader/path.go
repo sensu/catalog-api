@@ -1,6 +1,8 @@
 package integrationloader
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -56,6 +58,40 @@ func (l PathLoader) LoadImages() (Images, error) {
 	}
 
 	return images, nil
+}
+
+func (l PathLoader) LoadDashboards() (Dashboards, error) {
+	dashboards := Dashboards{}
+	dashboardsPath := path.Join(l.integrationPath, defaultDashboardsDirName)
+
+	files, err := ioutil.ReadDir(dashboardsPath)
+	if _, ok := err.(*fs.PathError); ok {
+		// no dashboards found; skipping
+		return dashboards, nil
+	} else if err != nil {
+		return dashboards, err
+	}
+
+	for _, f := range files {
+		relativePath := path.Join(defaultDashboardsDirName, f.Name())
+
+		if !f.IsDir() {
+			match, _ := regexp.MatchString(reDashboardExtensions, f.Name())
+			if match {
+				data, err := l.GetFileContentsAsString(relativePath)
+				if err != nil {
+					return dashboards, err
+				}
+				var anyMap map[string]interface{}
+				if err := json.Unmarshal([]byte(data), &anyMap); err != nil {
+					return dashboards, fmt.Errorf("error unmarshaling dashboard: %w (%s)", err, relativePath)
+				}
+				dashboards[f.Name()] = data
+			}
+		}
+	}
+
+	return dashboards, nil
 }
 
 func (l PathLoader) LoadLogo() (string, error) {

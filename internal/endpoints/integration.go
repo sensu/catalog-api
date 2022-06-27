@@ -90,3 +90,13 @@ func GenerateIntegrationVersionImageEndpoint(basePath string, integration catalo
 	endpoint := catalogapiv1.NewIntegrationVersionImageEndpoint(basePath, iv, filename, data)
 	return renderRaw(endpoint)
 }
+
+// GET /api/:generated_sha/v1/integrations/:namespace/:name/:version/dashboards/:dashboard.json
+func GenerateIntegrationVersionDashboardEndpoint(basePath string, integration catalogv1.Integration, version types.IntegrationVersion, filename string, data string) error {
+	iv := catalogapiv1.IntegrationVersion{
+		Integration: integration,
+		Version:     version.SemVer(),
+	}
+	endpoint := catalogapiv1.NewIntegrationVersionDashboardEndpoint(basePath, iv, filename, data)
+	return renderRaw(endpoint)
+}

@@ -58,6 +58,10 @@ func setupEndpointTest(tb testing.TB, integrations types.Integrations) (CatalogM
 			"image_1.png": "images png data 1",
 			"image_2.png": "images png data 2",
 		}
+		dashboards := integrationloader.Dashboards{
+			"dashboard_1.json": "{\"foo\":\"bar\"}",
+			"dashboard_2.json": "{\"baz\":\"kaz\"}",
+		}
 
 		il := mockintegrationloader.Loader{}
 		il.On("LoadConfig").Return(config, nil)
@@ -66,6 +70,7 @@ func setupEndpointTest(tb testing.TB, integrations types.Integrations) (CatalogM
 		il.On("LoadReadme").Return("readme markdown", nil)
 		il.On("LoadChangelog").Return("changelog markdown", nil)
 		il.On("LoadImages").Return(images, nil)
+		il.On("LoadDashboards").Return(dashboards, nil)
 
 		cl.On("NewIntegrationLoader", integration).Return(&il)
 	}
@@ -692,7 +697,6 @@ func TestIntegrationVersionImageEndpoint(t *testing.T) {
 		version     string
 		image       string
 		want        string
-		wantErr     bool
 	}{
 		{
 			name:        "foo/bar/0.1.0 image_1.png",
@@ -731,6 +735,69 @@ func TestIntegrationVersionImageEndpoint(t *testing.T) {
 
 			if string(b) != tt.want {
 				t.Errorf("image data mismatch: got = %v, want %v", string(b), tt.want)
+			}
+		})
+	}
+}
+
+// endpoint: /:release_sha256/v1/:namespace/:name/:version/dashboards/:dashboard.json
+func TestIntegrationVersionDashboardEndpoint(t *testing.T) {
+	integrations := defaultIntegrations()
+	m, err := setupEndpointTest(t, integrations)
+	if err := m.ProcessCatalog(); err != nil {
+		t.Fatal(err)
+	}
+
+	checksum, err := m.config.StagingChecksum()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name        string
+		namespace   string
+		integration string
+		version     string
+		dashboard   string
+		want        string
+	}{
+		{
+			name:        "foo/bar/0.1.0 dashboard_1.json",
+			namespace:   "foo",
+			integration: "bar",
+			version:     "0.1.0",
+			dashboard:   "dashboard_1.json",
+			want:        "{\"foo\":\"bar\"}",
+		},
+		{
+			name:        "foo/bar/0.1.0 dashboard_2.json",
+			namespace:   "foo",
+			integration: "bar",
+			version:     "0.1.0",
+			dashboard:   "dashboard_2.json",
+			want:        "{\"baz\":\"kaz\"}",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoint := path.Join(
+				m.config.ReleaseDir,
+				checksum,
+				"v1",
+				tt.namespace,
+				tt.integration,
+				tt.version,
+				"dashboards",
+				tt.dashboard,
+			)
+
+			b, err := ioutil.ReadFile(endpoint)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(b) != tt.want {
+				t.Errorf("dashboard data mismatch: got = %v, want %v", string(b), tt.want)
 			}
 		})
 	}
@@ -951,6 +1018,37 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "error when load dashboards fails",
+			fields: fields{
+				config: Config{
+					StagingDir: t.TempDir(),
+					ReleaseDir: t.TempDir(),
+				},
+				loader: func() catalogloader.Loader {
+					config := catalogv1.FixtureIntegration("foo", "bar")
+					integrations := types.Integrations{
+						types.FixtureIntegrationVersion("example_ns", "example", 1, 2, 3),
+					}
+
+					il := mockintegrationloader.Loader{}
+					il.On("LoadConfig").Return(config, nil)
+					il.On("LoadResources").Return("", nil)
+					il.On("LoadLogo").Return("", nil)
+					il.On("LoadReadme").Return("", nil)
+					il.On("LoadChangelog").Return("", nil)
+					il.On("LoadImages").Return(integrationloader.Images{}, nil)
+					il.On("LoadDashboards").Return(integrationloader.Dashboards{}, errors.New("read error"))
+
+					cl := mockcatalogloader.Loader{}
+					cl.On("LoadIntegrations").Return(integrations, nil)
+					cl.On("NewIntegrationLoader", mock.Anything).Return(&il)
+
+					return &cl
+				}(),
+			},
+			wantErr: true,
+		},
+		{
 			name: "success",
 			fields: fields{
 				config: Config{
@@ -970,6 +1068,7 @@ func TestCatalogManager_ProcessCatalog(t *testing.T) {
 					il.On("LoadReadme").Return("", nil)
 					il.On("LoadChangelog").Return("", nil)
 					il.On("LoadImages").Return(integrationloader.Images{}, nil)
+					il.On("LoadDashboards").Return(integrationloader.Dashboards{}, nil)
 
 					cl := mockcatalogloader.Loader{}
 					cl.On("LoadIntegrations").Return(integrations, nil)

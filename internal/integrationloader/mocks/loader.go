@@ -100,6 +100,29 @@ func (_m *Loader) LoadConfig() (catalogv1.Integration, error) {
 	return r0, r1
 }
 
+// LoadDashboards provides a mock function with given fields:
+func (_m *Loader) LoadDashboards() (integrationloader.Dashboards, error) {
+	ret := _m.Called()
+
+	var r0 integrationloader.Dashboards
+	if rf, ok := ret.Get(0).(func() integrationloader.Dashboards); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(integrationloader.Dashboards)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // LoadImages provides a mock function with given fields:
 func (_m *Loader) LoadImages() (integrationloader.Images, error) {
 	ret := _m.Called()
